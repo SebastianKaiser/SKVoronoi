@@ -68,8 +68,10 @@ function safeHeight( node )  {
   return ( node == undefined ) ? -1 : node.height;
 }
 
-let AvlTreeNode = function(value) {
+let AvlTreeNode = function(value,
+  comparator = function(a, b) { return a - b }) {
   this.value  = value;
+  this.comp   = comparator;
   this.left   = undefined;
   this.right  = undefined;
   this.height = 0;
@@ -150,9 +152,9 @@ AvlTreeNode.prototype.getRightmostLeaf = function () {
 }
 
 AvlTreeNode.prototype.insert = function (e) {
-  if ( e <= this.value ) {
+  if ( this.comp (e, this.value) <= 0 ) {
     this.left  = (this.left) ? this.left.insert( e ) : new AvlTreeNode(e);
-  } else if ( e > this.value ) {
+  } else if ( this.comp (e, this.value) > 0 ) {
     this.right = (this.right) ? this.right.insert( e ) : new AvlTreeNode(e);
   }
   this.height = this.calcHeight( this );
@@ -167,13 +169,13 @@ AvlTreeNode.prototype.insert = function (e) {
 
 AvlTreeNode.prototype.deleteNode = function (toDelete) {
   let retval = this;
-  if ( toDelete < this.value ) {
+  if ( this.comp (toDelete, this.value) < 0 ) {
     // value is smaller => left
     this.left    = this.left.deleteNode( toDelete );
-  } else if ( toDelete > this.value ) {
+  } else if ( this.comp (toDelete, this.value) > 0 ) {
     // value is bigger => right
     this.right   = this.right.deleteNode( toDelete );
-  } else if ( toDelete == this.value ) {
+  } else if ( this.comp (toDelete, this.value) == 0 ) {
     // found the desired node => delete it
     let newNode = undefined;
     if ( !this.left && !this.right ) {
