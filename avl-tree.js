@@ -3,9 +3,9 @@ const SIZE_CANVAS_Y = 800;
 
 let ctx = undefined;
 
-let size        = 1 << 7
+let size        = 1 << 6
 let at          = undefined;
-let values      = [29,25,29,54,35,65,63,70];
+let values      = [62,54,2,14,18,50,92,26];
 let values2     = [27, 55, 41, 38, 75, 49, 97, 11];
 let values3     = [54,80,50,40,1,59,73,90,99,80,25,35,90,70,78,63];
 let insertnodes = 1;
@@ -157,69 +157,65 @@ AvlTreeNode.prototype.insert = function (e) {
   return retval;
 }
 
+AvlTreeNode.prototype.deleteNode = function (toDelete) {
+  let retval = this;
+  if ( toDelete < this.value ) {
+    // value is smaller => left
+    this.left    = this.left.deleteNode( toDelete );
+  } else if ( toDelete > this.value ) {
+    // value is bigger => right
+    this.right   = this.right.deleteNode( toDelete );
+  } else if ( toDelete == this.value ) {
+    // found the desired node => delete it
+    let newNode = undefined;
+    if ( !this.left && !this.right ) {
+      // the node is a leaf, just delete it
+      return undefined;
+    } else if ( ! this.right ) {
+      newNode        = this.left.getRightmostLeaf();
+      newNode.right  = this.right;
+      if( newNode    != this.left ) {
+        newNode.left = this.left;
+      }
+    } else {
+      newNode         = this.right.getLeftmostLeaf();
+      newNode.left    = this.left;
+      if( newNode    != this.right ) {
+        newNode.right = this.right;
+      }
+    }
+    retval = newNode;
+  }
+  retval.height = height( retval );
+  return retval.balanceNodeDelete();
+}
+
 function height( node ) {
 	return Math.max( safeHeight(node.left), safeHeight(node.right)) + 1;
 }
 
-function balanceNodeDelete( node ) {
-  let retval = node;
-  if ( !node.left && !node.right) return node;
-  if ( node.balfac() < 2 && node.balfac() > -2 ) return node;
-  let y = (safeHeight( node.left ) > safeHeight(node.right)) ? node.left : node.right;
+AvlTreeNode.prototype.balanceNodeDelete = function() {
+  let retval = this;
+  if ( !this.left && !this.right) return this;
+  if ( this.balfac() < 2 && this.balfac() > -2 ) return this;
+  let y = (safeHeight( this.left ) > safeHeight(this.right)) ? this.left : this.right;
   let x = (safeHeight( y.left )    > safeHeight(y.right)) ? y.left : y.right;
-  if ( y == node.left && x == y.left ) {
-    retval = node.rotateRight();
-  } else if( y == node.left && x == y.right ) {
-    node.left  = y.rotateLeft()
-    retval     = node.rotateRight();
-  } else if( y == node.right && x == y.right ) {
-    retval     = node.rotateLeft();
-  } else if( y == node.right && x == y.left ) {
-    node.right = y.rotateRight()
-    retval     = node.rotateLeft();
+  if ( y == this.left && x == y.left ) {
+    retval = this.rotateRight();
+  } else if( y == this.left && x == y.right ) {
+    this.left  = y.rotateLeft()
+    retval     = this.rotateRight();
+  } else if( y == this.right && x == y.right ) {
+    retval     = this.rotateLeft();
+  } else if( y == this.right && x == y.left ) {
+    this.right = y.rotateRight()
+    retval     = this.rotateLeft();
   }
   return retval;
 }
 
-
-// delete a node
-function deleteNode( toDelete, curr ) {
-  if ( !curr ) return undefined;
-  if ( toDelete < curr.value ) {
-    // value is smaller => left
-    curr.left    = deleteNode( toDelete, curr.left );
-    curr.height  = height(curr);
-    return balanceNodeDelete (curr);
-  } else if ( toDelete > curr.value ) {
-    // value is bigger => right
-    curr.right   = deleteNode( toDelete, curr.right );
-    curr.height  = height(curr);
-    return balanceNodeDelete (curr);
-  } else if ( toDelete == curr.value ) {
-    // found the desired node => delete it
-    let newNode = undefined;
-    if ( !curr.left && !curr.right ) {
-      // the node is a leaf, just delete it
-      return undefined;
-    } else if ( ! curr.right ) {
-      newNode        = curr.left.getRightmostLeaf();
-      newNode.right  = curr.right;
-			if( newNode    != curr.left ) {
-				newNode.left = curr.left;
-			}
-    } else {
-      newNode         = curr.right.getLeftmostLeaf();
-      newNode.left    = curr.left;
-			if( newNode    != curr.right ) {
-				newNode.right = curr.right;
-			}
-    }
-    newNode.height = height(newNode);
-    return balanceNodeDelete ( newNode );
-  } else {
-    // value not found
-    return curr;
-  }
+function balanceNodeDelete( node ) {
+  return node.balanceNodeDelete()
 }
 
 // get some left or right- mostest element of a sub tree
@@ -237,15 +233,19 @@ function getExtreme( node, accessor, process ) {
   return cursor;
 }
 
+/****************************************************
+graphics
+*/
+
 function drawAnimation() {
   if (insertnodes < values.length) {
     at = at.insert( values[insertnodes] );
     insertnodes += 1;
-    assert("lost a node inserting", countNodes(at) == insertnodes )
+    assert("lost a node inserting", countNodes( at, 0 ) == insertnodes )
   } else if (insertnodes == values.length && deletenodes < values.length) {
-    at = deleteNode( values[deletenodes], at);
+    at = at.deleteNode( values[deletenodes]);
     assert(`lost nodes deleting ${values[deletenodes]}`,
-            countNodes(at) == (values.length - deletenodes) );
+            countNodes( at, 0 ) == (values.length - deletenodes) );
     deletenodes += 1;
   } else {
     createValues();
@@ -290,9 +290,14 @@ function drawLineOnCanvas(p1, p2, col) {
 	ctx.stroke();
 }
 
-function countNodes( node ) {
+/****************************************************
+ Tests
+*/
+
+function countNodes( node, count ) {
   if (!node) return 0;
-  return countNodes( node.left ) + countNodes( node.right ) + 1;
+  if (count > size) throw "Error in structure";
+  return countNodes( node.left, count+1 ) + countNodes( node.right, count+1 ) + 1;
 }
 
 function assert( description ,test ) {
