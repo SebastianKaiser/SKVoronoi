@@ -45,19 +45,28 @@ function init() {
 	return true;
 }
 
-function createValues() {
-  values = []
-  for ( let i = 0; i < size; i += 1 ) {
-	 	values[i] = Math.round( Math.random() * 100 );
-	}
-  at = new AvlTreeNode(values[0]);
-  insertnodes = 1;
-  deletenodes = 1;
-}
-
 /*****************************
 Avl Tree
 */
+
+// get some left or right- mostest element of a sub tree
+function getExtreme( node, accessor, process ) {
+  if(!node) return undefined;
+  let cursor = node;
+  let parent = undefined;
+  while (  accessor( cursor ) ) {
+    parent = cursor;
+    cursor = accessor( cursor );
+  }
+  if (parent) {
+    process(parent, cursor);
+  }
+  return cursor;
+}
+
+function safeHeight( node )  {
+  return ( node == undefined ) ? -1 : node.height;
+}
 
 let AvlTreeNode = function(value) {
   this.value  = value;
@@ -70,8 +79,8 @@ AvlTreeNode.prototype.balfac = function() {
   return safeHeight(this.left) - safeHeight(this.right);
 }
 
-function safeHeight( node )  {
-  return ( node == undefined ) ? -1 : node.height;
+AvlTreeNode.prototype.calcHeight = function() {
+  return Math.max( safeHeight(this.left), safeHeight(this.right)) + 1
 }
 
 AvlTreeNode.prototype.balanceLeft = function() {
@@ -106,8 +115,8 @@ AvlTreeNode.prototype.rotateRight = function() {
 	let newTop 		 = this.left;
 	this.left  		 = newTop.right;
 	newTop.right 	 = this;
-  this.height  	 = height( this );
-  newTop.height  = height( newTop );
+  this.height  	 = this.calcHeight();
+  newTop.height  = newTop.calcHeight();
 	return newTop;
 }
 
@@ -115,8 +124,8 @@ AvlTreeNode.prototype.rotateLeft = function() {
   let newTop     = this.right;
   this.right     = newTop.left;
   newTop.left    = this;
-  this.height  	 = height( this );
-  newTop.height  = height( newTop );
+  this.height  	 = this.calcHeight();
+  newTop.height  = newTop.calcHeight();
   return newTop;
 }
 
@@ -125,7 +134,7 @@ AvlTreeNode.prototype.getLeftmostLeaf = function () {
     function ( node ) { return node.left; },
     function ( parent, node ) {
       parent.left   = node.right;
-      parent.height = height(parent);
+      parent.height = parent.calcHeight();
     }
   );
 }
@@ -135,7 +144,7 @@ AvlTreeNode.prototype.getRightmostLeaf = function () {
     function ( node ) { return node.right; },
     function ( parent, node ) {
       parent.right  = node.left;
-      parent.height = height(parent);
+      parent.height = parent.calcHeight();
     }
   );
 }
@@ -146,8 +155,7 @@ AvlTreeNode.prototype.insert = function (e) {
   } else if ( e > this.value ) {
     this.right = (this.right) ? this.right.insert( e ) : new AvlTreeNode(e);
   }
-  this.height    = Math.max( safeHeight(this.left),
-                             safeHeight(this.right)) + 1;
+  this.height = this.calcHeight( this );
   let retval = this;
   if ( this.balfac() > 1 ) {
     retval = this.balanceLeft();
@@ -186,12 +194,8 @@ AvlTreeNode.prototype.deleteNode = function (toDelete) {
     }
     retval = newNode;
   }
-  retval.height = height( retval );
+  retval.height = retval.calcHeight( retval );
   return retval.balanceNodeDelete();
-}
-
-function height( node ) {
-	return Math.max( safeHeight(node.left), safeHeight(node.right)) + 1;
 }
 
 AvlTreeNode.prototype.balanceNodeDelete = function() {
@@ -213,26 +217,6 @@ AvlTreeNode.prototype.balanceNodeDelete = function() {
   }
   return retval;
 }
-
-function balanceNodeDelete( node ) {
-  return node.balanceNodeDelete()
-}
-
-// get some left or right- mostest element of a sub tree
-function getExtreme( node, accessor, process ) {
-  if(!node) return undefined;
-  let cursor = node;
-  let parent = undefined;
-  while (  accessor( cursor ) ) {
-    parent = cursor;
-    cursor = accessor( cursor );
-  }
-  if (parent) {
-    process(parent, cursor);
-  }
-  return cursor;
-}
-
 /****************************************************
 graphics
 */
@@ -293,6 +277,15 @@ function drawLineOnCanvas(p1, p2, col) {
 /****************************************************
  Tests
 */
+function createValues() {
+  values = []
+  for ( let i = 0; i < size; i += 1 ) {
+	 	values[i] = Math.round( Math.random() * 100 );
+	}
+  at = new AvlTreeNode(values[0]);
+  insertnodes = 1;
+  deletenodes = 1;
+}
 
 function countNodes( node, count ) {
   if (!node) return 0;
