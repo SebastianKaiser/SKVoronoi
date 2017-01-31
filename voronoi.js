@@ -13,7 +13,7 @@ let points = new Array();
 let vsitenr = 0
 let y = 0;
 let cs = undefined;
-let line = new RBTree(  );
+let line = undefined
 let sites = new Array();
 let pqueue = new PriorityQueue({
 	comparator: (s, r) => {
@@ -29,7 +29,7 @@ document.getElementById("next").onclick = drawAnimation;
 window.onload = function() {
  	init()
  	y = 0;
- // 	window.setInterval( drawAnimation, 1000 );
+ 	// window.setInterval( drawAnimation, 200 );
 };
 
 let VBreakPoint = function( l, r, left, right) {
@@ -230,22 +230,6 @@ function nearSiteToPoint(point) {
 	return nearSite;
 }
 
-// star function
-function star(z) {
-	return {
-		x: z.x,
-		y: z.y + minDistToSite(z)
-	};
-}
-
-// star to point function
-function starP(z, p) {
-	return {
-		x: z.x,
-		y: z.y + distance(z, p)
-	};
-}
-
 let firstSite = undefined;
 
 /*
@@ -352,10 +336,11 @@ function drawBeachline( sweepy ) {
 	}
 }
 
-function drawParabola(site, sweepy, xl, xr) {
+function drawParabola(site, sweepy, xl, xr, color = "blue") {
 	let p = getParabolaFromFokusAndDir(site, sweepy);
+	console.log(`xl => ${xl}, xr => ${xr}`);
 	for (let x = xl; x < xr; x++) {
-		drawPoint({ x:x, y: p.valuex(x) }, "blue");
+		drawPoint({ x:x, y: p.valuex(x) }, color );
 	}
 }
 
@@ -382,12 +367,12 @@ function drawLineOnCanvas(p1, p2, col) {
 function drawAnimation() {
 	ctx.fillStyle = "white";
 	ctx.fillRect(0, 0, SIZE_CANVAS_X, SIZE_CANVAS_Y);
-	//parabolaResearch()
-	calcVoronoi();
-	drawTree( line, { x: SIZE_CANVAS_X / 2, y: 30}, SIZE_CANVAS_X / 4 );
-	sites.forEach(s => {
-	 	drawPoint(s, "blue", 4);
-	});
+	parabolaResearch3();
+	// calcVoronoi();
+	// drawTree( line, { x: SIZE_CANVAS_X / 2, y: 30}, SIZE_CANVAS_X / 4 );
+	// sites.forEach(s => {
+	//  	drawPoint(s, "blue", 4);
+	// });
 }
 
 function drawPoint(p, col, size = 2) {
@@ -431,8 +416,10 @@ let tdir   = SIZE_CANVAS_X / 2 + 40;
 function parabolaResearch() {
 	let p1 = { x: Math.cos(angle1 + a) * radius + SIZE_CANVAS_X / 2,
 						 y: Math.sin(angle1 + a) * radius + SIZE_CANVAS_Y / 2 }
-    let p2 = { x: Math.cos(angle2 + a) * radius + SIZE_CANVAS_X / 2,
-				 		 y: Math.sin(angle2 + a) * radius + SIZE_CANVAS_Y / 2 }
+  let p2 = { x: Math.cos(angle2 + a) * radius + SIZE_CANVAS_X / 2,
+			 		 	 y: Math.sin(angle2 + a) * radius + SIZE_CANVAS_Y / 2 }
+
+
 	drawPoint( p1, "blue" );
 	drawPoint( p2, "red" );
 
@@ -446,4 +433,71 @@ function parabolaResearch() {
 
 	a += 0.05;
 	if ( a >= Math.PI ) a = 0;
+}
+
+function parabolaResearch2() {
+		let p1 = { x: Math.cos(angle1 + a) * radius + SIZE_CANVAS_X / 2,
+						 y: Math.sin(angle1 + a) * radius + SIZE_CANVAS_Y / 2 }
+    let p2 = { x: Math.cos(angle2 + a) * radius + SIZE_CANVAS_X / 2,
+				 		 y: Math.sin(angle2 + a) * radius + SIZE_CANVAS_Y / 2 }
+	drawPoint( p1, "blue" );
+	drawPoint( p2, "red" );
+	let i = findIntersect( p1, p2, tdir );
+
+	drawParabola( p1, tdir, 0, i.l );
+	if ( i.l != i.r) {
+		drawParabola( p2, tdir, i.l, i.r, "red" );
+		drawParabola( p1, tdir, i.r, SIZE_CANVAS_X );
+	} else {
+		drawParabola( p2, tdir, i.r, SIZE_CANVAS_X, "red" );
+	}
+
+	let dp = getParabolaFromFokusAndDir( p1, tdir );
+	drawPoint( {x: i.l, y: dp.valuex(i.l)}, "orange", 6);
+	drawPoint( {x: i.r, y: dp.valuex(i.r)}, "green", 6);
+
+	a += 0.05;
+	if ( a >= Math.PI ) a = 0;
+}
+
+function parabolaResearch3() {
+	let paras = [];
+	let no = 5;
+	let step = SIZE_CANVAS_X / no;
+	for ( let i = 0; i < 5; i += 1 ) {
+		let x = Math.round( Math.random() * step ) + i * step;
+		let y = Math.round( Math.random() * 20 ) + SIZE_CANVAS_Y / 2;
+		paras[ i ] = { x: x, y: y };
+	}
+
+	let bps = [];
+	let last = 0;
+	for ( let i = 0; i < no - 1; i += 1 ) {
+		let int  = findIntersect( paras[i], paras[i+1], tdir );
+		console.log(int);
+		bps[i] = { l: last, r: Math.max(int.l, int.r), p: paras[i] };
+		last = bps[i].r;
+	}
+	bps[no-1] = {l: last, r: SIZE_CANVAS_X, p: paras[no-1]};
+
+	drawLineOnCanvas({x: 0, y: tdir},{x: SIZE_CANVAS_X, y: tdir}, "yellow");
+	for ( let i = 0; i < 5; i += 1 ) {
+		drawParabola( bps[i].p, tdir, bps[i].l, bps[i].r );
+	}
+}
+
+// star function
+function star(z) {
+	return {
+		x: z.x,
+		y: z.y + minDistToSite(z)
+	};
+}
+
+// star to point function
+function starP(z, p) {
+	return {
+		x: z.x,
+		y: z.y + distance(z, p)
+	};
 }
