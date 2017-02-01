@@ -13,7 +13,7 @@ let points = new Array();
 let vsitenr = 0
 let y = 0;
 let cs = undefined;
-let line = undefined
+let line = undefined;
 let sites = new Array();
 let pqueue = new PriorityQueue({
 	comparator: (s, r) => {
@@ -44,15 +44,7 @@ VBreakPoint.prototype.toString = function () {
 }
 
 VBreakPoint.prototype.breakPoint = function( sweepy ) {
-	let lp = getParabolaFromFokusAndDir(this.lsite, sweepy);
-	let rp = getParabolaFromFokusAndDir(this.rsite, sweepy);
-	drawParabola(this.lsite, sweepy, 0, SIZE_CANVAS_X);
-	drawParabola(this.rsite, sweepy, 0, SIZE_CANVAS_X);
-	let {l: l, r: r} = lp.intersect(rp);
-	let retval = ((this.lsite.x < l) && (l < this.rsite.x)) ||
-	 						 ((this.rsite.x < l) && (l < this.lsite.x)) ? l : r;
-	drawPoint({x: retval, y: lp.valuex(retval)}, "green", 6);
-	return clamp( retval, 0, SIZE_CANVAS_X);
+	return chooseBp(this.lsite, this.rsite, sweepy);
 }
 
 let Site = function(point) {
@@ -206,31 +198,15 @@ function distance(p, op) {
 	return Math.sqrt(diffx * diffx + diffy * diffy);
 }
 
-// dist to nearest site
-function minDistToSite(point) {
-	let minv = 9999999999;
-	visiSites.forEach(s => {
-		minv = Math.min(minv, distance(s, point));
-	});
-	return minv;
+function chooseBp( p1, p2, sweepy ) {
+	let int = findIntersect(p1, p2, sweepy);
+	console.log(`int => ${int.l}, ${int.r}`);
+	if ( Math.min(p1.x, p2.x) <= int.l && int.l <= Math.max(p1.x, p2.x) ) {
+		return int.l;
+	} else {
+		return int.r;
+	}
 }
-
-// nearest site to point
-function nearSiteToPoint(point) {
-	let minv = 9999999999;
-	let nearSite = undefined;
-	sites.forEach(s => {
-		if (s.y < point.y) return;
-		let d = distance(s, point);
-		if (minv > d) {
-			minv = d;
-			nearSite = s;
-		}
-	});
-	return nearSite;
-}
-
-let firstSite = undefined;
 
 /*
 insert a site into the beachline
@@ -286,8 +262,6 @@ function findSiteInL( e, node ) {
 }
 
 function findIntersect(site1, site2, sweepy) {
-	let lph = sweepy - site1.y;
-	let rph = sweepy - site2.y;
 	let rp  = getParabolaFromFokusAndDir( site2, sweepy );
 	let lp  = getParabolaFromFokusAndDir( site1, sweepy );
 	return lp.intersect(rp);
@@ -338,7 +312,6 @@ function drawBeachline( sweepy ) {
 
 function drawParabola(site, sweepy, xl, xr, color = "blue") {
 	let p = getParabolaFromFokusAndDir(site, sweepy);
-	console.log(`xl => ${xl}, xr => ${xr}`);
 	for (let x = xl; x < xr; x++) {
 		drawPoint({ x:x, y: p.valuex(x) }, color );
 	}
@@ -367,12 +340,12 @@ function drawLineOnCanvas(p1, p2, col) {
 function drawAnimation() {
 	ctx.fillStyle = "white";
 	ctx.fillRect(0, 0, SIZE_CANVAS_X, SIZE_CANVAS_Y);
-	parabolaResearch3();
-	// calcVoronoi();
-	// drawTree( line, { x: SIZE_CANVAS_X / 2, y: 30}, SIZE_CANVAS_X / 4 );
-	// sites.forEach(s => {
-	//  	drawPoint(s, "blue", 4);
-	// });
+	//parabolaResearch3();
+  calcVoronoi();
+	drawTree( line, { x: SIZE_CANVAS_X / 2, y: 30}, SIZE_CANVAS_X / 4 );
+	sites.forEach(s => {
+		drawPoint(s, "blue", 4);
+	});
 }
 
 function drawPoint(p, col, size = 2) {
@@ -396,7 +369,7 @@ function drawTree(node, cp, step) {
 }
 
 /////////////////////////////////
-// obsolete, unused or obscure
+// test, obsolete, unused and obscure
 let parabolaAbc = function(a, b, c) {
 	this.a = a;
 	this.b = b;
@@ -460,6 +433,7 @@ function parabolaResearch2() {
 	if ( a >= Math.PI ) a = 0;
 }
 
+
 function parabolaResearch3() {
 	let paras = [];
 	let no = 5;
@@ -473,15 +447,15 @@ function parabolaResearch3() {
 	let bps = [];
 	let last = 0;
 	for ( let i = 0; i < no - 1; i += 1 ) {
-		let int  = findIntersect( paras[i], paras[i+1], tdir );
-		console.log(int);
-		bps[i] = { l: last, r: Math.max(int.l, int.r), p: paras[i] };
+		let ci = chooseBp(paras[i], paras[i+1], tdir);
+		bps[i] = { l: last, r: ci, p: paras[i] };
 		last = bps[i].r;
 	}
 	bps[no-1] = {l: last, r: SIZE_CANVAS_X, p: paras[no-1]};
 
 	drawLineOnCanvas({x: 0, y: tdir},{x: SIZE_CANVAS_X, y: tdir}, "yellow");
 	for ( let i = 0; i < 5; i += 1 ) {
+		drawParabola( bps[i].p, tdir, 0, SIZE_CANVAS_X, "yellow" );
 		drawParabola( bps[i].p, tdir, bps[i].l, bps[i].r );
 	}
 }
@@ -501,3 +475,30 @@ function starP(z, p) {
 		y: z.y + distance(z, p)
 	};
 }
+
+// dist to nearest site
+function minDistToSite(point) {
+	let minv = 9999999999;
+	visiSites.forEach(s => {
+		minv = Math.min(minv, distance(s, point));
+	});
+	return minv;
+}
+
+// nearest site to point
+function nearSiteToPoint(point) {
+	let minv = 9999999999;
+	let nearSite = undefined;
+	sites.forEach(s => {
+		if (s.y < point.y) return;
+		let d = distance(s, point);
+		if (minv > d) {
+			minv = d;
+			nearSite = s;
+		}
+	});
+	return nearSite;
+}
+
+let firstSite = undefined;
+
