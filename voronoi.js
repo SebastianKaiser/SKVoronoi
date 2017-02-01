@@ -8,14 +8,13 @@ const NO_SITES = 1 << 3
 /**
 	Initializsation of stuff
 */
-let ctx = undefined;
-let points = new Array();
-let vsitenr = 0
-let y = 0;
-let cs = undefined;
-let line = undefined;
-let sites = new Array();
-let pqueue = new PriorityQueue({
+let ctx 		= undefined;
+let points  = new Array();
+let y       = 0;
+let cs      = undefined;
+let line 	  = undefined;
+let sites   = new Array();
+let pqueue  = new PriorityQueue({
 	comparator: (s, r) => {
 		let yd = s.y - r.y;
 		if (yd == 0) {
@@ -32,37 +31,27 @@ window.onload = function() {
  	// window.setInterval( drawAnimation, 200 );
 };
 
-let VBreakPoint = function( l, r, left, right) {
-	this.lsite = l;
-	this.rsite = r;
-	this.left  = left;
-	this.right = right;
+function init() {
+	if (document == null) {
+		alert("document is null");
+		window.clearInterval(active);
+		return null;
+	}
+	var canvas = document.getElementById("forces");
+	if (typeof canvas === "undefined" || canvas == null) {
+		alert("Canvas is undefined " + canvas);
+		window.clearInterval(active);
+	}
+	ctx = canvas.getContext("2d");
+	return true;
 }
 
-VBreakPoint.prototype.toString = function () {
-	return `${this.lsite.toString()} + ${this.rsite.toString()}`
-}
-
-VBreakPoint.prototype.breakPoint = function( sweepy ) {
-	return chooseBp(this.lsite, this.rsite, sweepy);
-}
-
+/******************************************************
+algorithm
+*/
 let Site = function(point) {
 	this.x = point.x;
 	this.y = point.y;
-}
-
-let VSite = function(point) {
-	this.vsitenr = vsitenr++
-	this.x = point.x;
-	this.y = point.y;
-
-	this.prev = undefined;
-	this.next = undefined;
-}
-
-VSite.prototype.toString = function() {
-	return `( ${this.x}, ${this.y} )`
 }
 
 let CircleEvent = function(point, radius, ref) {
@@ -111,21 +100,6 @@ DegenParabolaAhk.prototype.intersect = function(op) {
 	}
 }
 
-function init() {
-	if (document == null) {
-		alert("document is null");
-		window.clearInterval(active);
-		return null;
-	}
-	var canvas = document.getElementById("forces");
-	if (typeof canvas === "undefined" || canvas == null) {
-		alert("Canvas is undefined " + canvas);
-		window.clearInterval(active);
-	}
-	ctx = canvas.getContext("2d");
-	return true;
-}
-
 function initAlgorithm() {
 	site = new Array();
 	line = undefined;
@@ -148,17 +122,6 @@ function rootsOfQuadratic(a, b, c) {
 		l: Math.min(x1, x2),
 		r: Math.max(x1, x2)
 	};
-}
-
-function getParabolaFromFokusAndDir(focus, diry) {
-	if ( focus.y === diry) {
-		return new DegenParabolaAhk( 0, focus.x, (focus.y + diry) / 2 );
-	}
-	let a = 1 / (2 * (focus.y - diry));
-	let h = focus.x;
-	let k = (focus.y + diry) / 2;
-	drawPoint(focus, "red", 8);
-	return new ParabolaAhk(a, h, k);
 }
 
 // clamp numbers between min and max
@@ -208,6 +171,18 @@ function chooseBp( p1, p2, sweepy ) {
 	}
 }
 
+function getParabolaFromFokusAndDir(focus, diry) {
+	if ( focus.y === diry) {
+		return new DegenParabolaAhk( 0, focus.x, (focus.y + diry) / 2 );
+	}
+	let a = 1 / (2 * (focus.y - diry));
+	let h = focus.x;
+	let k = (focus.y + diry) / 2;
+	return new ParabolaAhk(a, h, k);
+}
+
+let firstSite = undefined;
+
 /*
 insert a site into the beachline
 */
@@ -244,23 +219,6 @@ function insertSiteInL(e, node) {
 	}
 }
 
-function findSiteInL( e, node ) {
-	let sweepy = e.y;
-	if ( node instanceof VSite ) {
-		return node;
-	} else if ( node instanceof VBreakPoint ) {
-		// find intersection for comparison with site event
-		let xa = node.breakPoint( sweepy );
-		if (e.x < xa) {
-			return findSiteInL( e, node.left )
-		} else if ( e.x >= xa ) {
-			return findSiteInL( e, node.right )
-		} else {
-			console.log("?=")
-		}
-	}
-}
-
 function findIntersect(site1, site2, sweepy) {
 	let rp  = getParabolaFromFokusAndDir( site2, sweepy );
 	let lp  = getParabolaFromFokusAndDir( site1, sweepy );
@@ -275,7 +233,6 @@ function calcVoronoi() {
 	if (e instanceof Site) {
 		drawLine(line, e.y);
 		line = insertSiteInL(e, line);
-		console.log( findSiteInL(e, line, e.y) );
 		drawBeachline( e.y );
 		// let z = circumVector( list[vl-3], list[vl-2], list[vl-1] );
 		// pqueue.queue( new CircleEvent( { x: z.p.x, y: z.p.y - z.r }, z.r, {x: z.p.x, y: z.p.y} ));
@@ -340,9 +297,8 @@ function drawLineOnCanvas(p1, p2, col) {
 function drawAnimation() {
 	ctx.fillStyle = "white";
 	ctx.fillRect(0, 0, SIZE_CANVAS_X, SIZE_CANVAS_Y);
-	//parabolaResearch3();
-  calcVoronoi();
-	drawTree( line, { x: SIZE_CANVAS_X / 2, y: 30}, SIZE_CANVAS_X / 4 );
+	parabolaResearch3();
+  // calcVoronoi();
 	sites.forEach(s => {
 		drawPoint(s, "blue", 4);
 	});
@@ -455,7 +411,7 @@ function parabolaResearch3() {
 
 	drawLineOnCanvas({x: 0, y: tdir},{x: SIZE_CANVAS_X, y: tdir}, "yellow");
 	for ( let i = 0; i < 5; i += 1 ) {
-		drawParabola( bps[i].p, tdir, 0, SIZE_CANVAS_X, "yellow" );
+		drawParabola( bps[i].p, tdir, 0, SIZE_CANVAS_X, "red" );
 		drawParabola( bps[i].p, tdir, bps[i].l, bps[i].r );
 	}
 }
@@ -499,6 +455,3 @@ function nearSiteToPoint(point) {
 	});
 	return nearSite;
 }
-
-let firstSite = undefined;
-
