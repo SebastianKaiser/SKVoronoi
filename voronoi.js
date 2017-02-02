@@ -100,19 +100,6 @@ DegenParabolaAhk.prototype.intersect = function(op) {
 	}
 }
 
-function initAlgorithm() {
-	site = new Array();
-	line = undefined;
-	pqueue.clear();
-	for (let i = 0; i < NO_SITES; i++) {
-		sites[i] = new Site(
-			new THREE.Vector2(
-				Math.round(Math.random() * SIZE_CANVAS_X),
-				Math.round(Math.random() * SIZE_CANVAS_Y)));
-		pqueue.queue(sites[i]);
-	}
-}
-
 function rootsOfQuadratic(a, b, c) {
 	if( a == 0 ) return { l: -c / b, r: -c / b }
 	let d = Math.sqrt(b * b - 4 * a * c)
@@ -181,61 +168,34 @@ function getParabolaFromFokusAndDir(focus, diry) {
 	return new ParabolaAhk(a, h, k);
 }
 
-let firstSite = undefined;
-
-/*
-insert a site into the beachline
-*/
-function insertSiteInL(e, node) {
-	let sweepy = e.y;
-	if (node == undefined) {
-		firstSite = new VSite( e );
-		return firstSite;
-	} else if (node instanceof VSite) {
-		let ln = new VSite( node );
-		let nn = new VSite( e );
-		let rn = new VSite( node );
-		ln.prev = node.prev;
-		if( ln.prev == undefined ) {
-			firstSite = ln;
-		}
-		ln.prev = node.prev;
-		ln.next = nn;
-		nn.prev = ln;
-		nn.next = rn;
-		rn.prev = nn;
-		rn.next = node.next;
-		let newBp1 = new VBreakPoint( e, new Site( node ), ln, nn );
-		return new VBreakPoint( new Site( node ), e, newBp1, rn );
-	} else if (node instanceof VBreakPoint) {
-		// find intersection for comparison with site event
-		let xa = node.breakPoint(sweepy);
-		if (e.x < xa) {
-			node.left = insertSiteInL( e, node.left)
-		} else if ( e.x >= xa ) {
-			node.right = insertSiteInL( e, node.right)
-		}
-		return node;
-	}
-}
-
 function findIntersect(site1, site2, sweepy) {
 	let rp  = getParabolaFromFokusAndDir( site2, sweepy );
 	let lp  = getParabolaFromFokusAndDir( site1, sweepy );
 	return lp.intersect(rp);
 }
 
+let firstSite = undefined;
+
+function initAlgorithm() {
+	site = new Array();
+	line = undefined;
+	pqueue.clear();
+	for (let i = 0; i < NO_SITES; i++) {
+		sites[i] = new Site(
+			new THREE.Vector2(
+				Math.round(Math.random() * SIZE_CANVAS_X),
+				Math.round(Math.random() * SIZE_CANVAS_Y)));
+		pqueue.queue(sites[i]);
+	}
+}
+
+let paras = []
 function calcVoronoi() {
 	if (pqueue.length == 0) {
 		initAlgorithm();
 	}
 	let e = pqueue.dequeue();
 	if (e instanceof Site) {
-		drawLine(line, e.y);
-		line = insertSiteInL(e, line);
-		drawBeachline( e.y );
-		// let z = circumVector( list[vl-3], list[vl-2], list[vl-1] );
-		// pqueue.queue( new CircleEvent( { x: z.p.x, y: z.p.y - z.r }, z.r, {x: z.p.x, y: z.p.y} ));
 	} else if (e instanceof CircleEvent) {
 		drawCircle(e.ref.x, e.ref.y, e.r)
 	}
