@@ -209,39 +209,47 @@ let BlNode = function(v, p, n) {
 let bl = undefined;
 
 function calcVoronoi() {
-	if (pqueue.length == 0) {
-		initAlgorithm();
-	}
-	while ( pqueue.length > 0) {
-		let e = pqueue.dequeue();
-		let sweepy = e.y;
-		if (e instanceof Site) {
-			if (!bl) {
-				bl		 	 = new BlNode(e, undefined, undefined);
+	let e = pqueue.dequeue();
+	let sweepy = e.y;
+	if (e instanceof Site) {
+		if (!bl) {
+			// start beach line
+			bl		 	 = new BlNode(e, undefined, undefined);
+		} else {
+			// find beachline segment to split
+			let bps  = []; // breakpoints
+			bps[0]   = { x: 0, pa: bl }; // leftest breakpoint
+			let c = bl.n; // cursor
+			for (let i = 1; c && c.n; c = c.n ) {
+				// take the cursor and the next element and
+				// store the left intersection point
+				bps[i] = { x: findIntersect( c.v, c.n.v, sweepy ).l,
+									 pa: c };
+				i += 1;
+			}
+			if (bps.length == 1) {
+				splitNode(bl, e);
 			} else {
-				let bps  = [];
-				bps[0]   = { x: 0, pa: bl };
-				let c = bl.n;
-				for (let i = 1; c && c.n; c = c.n ) {
-					bps[i] = { x: findIntersect( c, c.n, sweepy ).l,
-										 pa: c };
-					i += 1;
-				}
-				if (c) { 
-					bps[bps.length] =  {x: SIZE_CANVAS_X, pa: c}
-				};
+				// iterate through the breakpoints bps, if e's x coordinate
+				// fits, take the given parabola and split it.
 				for (let i = 0; i < bps.length - 1; i += 1 ) {
 					if( e.x > bps[i].x && e.x < bps[i+1].x ) {
-						let nn = new BlNode(e, bps[i].pa, bps[i+1].pa);
-						bps[i].pa.n 	 = nn;
-						bps[i+1].pa.p  = nn;
+						splitNode(bps[i].pa, e);
 					} // if( e.x > bps[i].x && e.x < bps[i+1].x )
 				} // for (let i = 0; i < bps.length - 1; i += 1 )
-			} // if (!bl) .. else
-		} else if (e instanceof CircleEvent) {
-			drawCircle(e.ref.x, e.ref.y, e.r)
-		} // if (e instanceof Site) .. else ..
-	} // while
+			}
+		} // if (!bl) .. else
+	} else if (e instanceof CircleEvent) {
+		drawCircle(e.ref.x, e.ref.y, e.r)
+	} // if (e instanceof Site) .. else ..
+	return sweepy;
+}
+
+function splitNode(nodeToSplit, splitWithValue) {
+	let newEnd			= new BlNode(nodeToSplit.v, undefined, nodeToSplit.n);
+	let newNode 		= new BlNode(splitWithValue, nodeToSplit, newEnd);
+	nodeToSplit.n   = newNode;
+	newEnd.p 				= newNode;
 }
 
 /*****************************************
@@ -258,15 +266,18 @@ function drawLine(node, y) {
 }
 
 function drawBeachline( sweepy ) {
-	let x = 0;
-	let node = firstSite;
-	if( !node.next ) return;
-	let i = 0;
-	while( node && node.next ) {
-		let bp = findIntersect(node, node.next, sweepy);
-		drawParabola(node, sweepy, 0, SIZE_CANVAS_X);
-		node = node.next;
-		x = bp;
+	let c = bl;
+	let lastX = 0;
+	while(c) {
+		let l = 0;
+		if (c.n) {
+			l = findIntersect(c.v, c.n.v, sweepy).l;
+		} else {
+			l = SIZE_CANVAS_X;
+		}
+		drawParabola(c.v, sweepy, lastX, l);
+		lastX = l;
+		c = c.n;
 	}
 }
 
@@ -300,11 +311,11 @@ function drawLineOnCanvas(p1, p2, col) {
 function drawAnimation() {
 	ctx.fillStyle = "white";
 	ctx.fillRect(0, 0, SIZE_CANVAS_X, SIZE_CANVAS_Y);
-	parabolaResearch();
-	calcVoronoi();
-	sites.forEach(s => {
-		drawPoint(s, "blue", 4);
-	});
+	if (pqueue.length == 0) {
+		initAlgorithm();
+	}
+	let sweepy = calcVoronoi();
+	drawBeachline( sweepy );
 }
 
 function drawPoint(p, col, size = 2) {
