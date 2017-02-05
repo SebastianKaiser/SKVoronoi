@@ -24,7 +24,25 @@ let pqueue  = new PriorityQueue({
 	}
 });
 
-document.getElementById("next").onclick = drawAnimation;
+
+let angle1 = 0;
+let angle2 = Math.PI;
+let radius = 20;
+let a = 0;
+let tdir   = SIZE_CANVAS_X / 2 + 40;
+
+document.getElementById("back").onclick = function() {
+	a -= 0.05;
+	if ( a <= 0 ) a = Math.PI;
+	drawAnimation();
+}
+
+document.getElementById("next").onclick = function() {
+	a += 0.05;
+	if ( a >= Math.PI ) a = 0;
+	drawAnimation();
+}
+
 window.onload = function() {
  	init()
  	y = 0;
@@ -72,16 +90,6 @@ ParabolaAhk.prototype.valuex = function(x) {
 	return this.a * Math.pow(x - this.h, 2) + this.k
 }
 
-ParabolaAhk.prototype.intersect = function(op) {
-	if( op instanceof DegenParabolaAhk ) {
-		return {r: op.h, l: op.h};
-	}
-	let ra = this.a - op.a;
-	let rb = -2 * (this.a * this.h - op.a * op.h);
-	let rc = (this.a * this.h * this.h - op.a * op.h * op.h) + (this.k - op.k);
-	return rootsOfQuadratic(ra, rb, rc);
-}
-
 let DegenParabolaAhk = function(a, h, k) {
 	this.a = a;
 	this.h = h;
@@ -100,15 +108,25 @@ DegenParabolaAhk.prototype.intersect = function(op) {
 	}
 }
 
+function intersect(p, op) {
+	if( p instanceof DegenParabolaAhk ) {
+		return {r: p.h, l: p.h};
+	}
+	if( op instanceof DegenParabolaAhk ) {
+		return {r: op.h, l: op.h};
+	}
+	let ra = p.a - op.a;
+	let rb = -2 * (p.a * p.h - op.a * op.h);
+	let rc = (p.a * p.h * p.h - op.a * op.h * op.h) + (p.k - op.k);
+	return rootsOfQuadratic(ra, rb, rc);
+}
+
 function rootsOfQuadratic(a, b, c) {
-	if( a == 0 ) return { l: -c / b, r: -c / b }
-	let d = Math.sqrt(b * b - 4 * a * c)
-	let x1 = (-b + d) / (2 * a)
-	let x2 = (-b - d) / (2 * a)
-	return {
-		l: Math.min(x1, x2),
-		r: Math.max(x1, x2)
-	};
+	if( a == 0 ) return { l: -c / b, r: -c / b };
+	let d = Math.sqrt(b * b - 4 * a * c);
+	let x1 = (-b + d) / (2 * a);
+	let x2 = (-b - d) / (2 * a);
+	return { l: x1,	r: x2	};
 }
 
 // clamp numbers between min and max
@@ -135,10 +153,7 @@ function circumVector(A, B, C) {
 		y: (A.y * bca + B.y * bcb + C.y * bcc) / n
 	};
 	let r = distance(z, A);
-	return {
-		p: z,
-		r: r
-	};
+	return { p: z, r: r };
 }
 
 // distance between two points
@@ -146,16 +161,6 @@ function distance(p, op) {
 	let diffx = p.x - op.x;
 	let diffy = p.y - op.y;
 	return Math.sqrt(diffx * diffx + diffy * diffy);
-}
-
-function chooseBp( p1, p2, sweepy ) {
-	let int = findIntersect(p1, p2, sweepy);
-	console.log(`int => ${int.l}, ${int.r}`);
-	if ( Math.min(p1.x, p2.x) <= int.l && int.l <= Math.max(p1.x, p2.x) ) {
-		return int.l;
-	} else {
-		return int.r;
-	}
 }
 
 function getParabolaFromFokusAndDir(focus, diry) {
@@ -169,9 +174,15 @@ function getParabolaFromFokusAndDir(focus, diry) {
 }
 
 function findIntersect(site1, site2, sweepy) {
-	let rp  = getParabolaFromFokusAndDir( site2, sweepy );
-	let lp  = getParabolaFromFokusAndDir( site1, sweepy );
-	return lp.intersect(rp);
+	let p1  = getParabolaFromFokusAndDir( site1, sweepy );
+	let p2  = getParabolaFromFokusAndDir( site2, sweepy );
+	let i		= 0;
+	if ( site1.y < site2.y ) {
+		i = intersect(p2, p1);
+	} else {
+		i = intersect(p2, p1);
+	}
+	return i;
 }
 
 let firstSite = undefined;
@@ -189,16 +200,48 @@ function initAlgorithm() {
 	}
 }
 
-let paras = []
+let BlNode = function(v, p, n) {
+	this.v = v;
+	this.p = p;
+	this.n = n;
+};
+
+let bl = undefined;
+
 function calcVoronoi() {
 	if (pqueue.length == 0) {
 		initAlgorithm();
 	}
-	let e = pqueue.dequeue();
-	if (e instanceof Site) {
-	} else if (e instanceof CircleEvent) {
-		drawCircle(e.ref.x, e.ref.y, e.r)
-	}
+	while ( pqueue.length > 0) {
+		let e = pqueue.dequeue();
+		let sweepy = e.y;
+		if (e instanceof Site) {
+			if (!bl) {
+				bl		 	 = new BlNode(e, undefined, undefined);
+			} else {
+				let bps  = [];
+				bps[0]   = { x:0, pa: bl};
+				let c = bl.n;
+				for (let i = 1; c && c.n; c = c.n ) {
+					bps[i] = { x: findIntersect( c, c.n, sweepy ).l,
+										 pa: c };
+					i += 1;
+				}
+				bps[bps.length] =  {x: SIZE_CANVAS_X, pa: c};
+				for (let i = 0; i < bps.length - 1; i += 1 ) {
+					if( e.x > bps[i].x && e.x < bps[i+1].x ) {
+						let nn = new BlNode(e, bps[i].pa, bps[i+1].pa);
+						bps[i].n 	 = nn;
+						nn.p 			 = bps[i].pa;
+						bps[i+1].p = nn;
+						nn.n 			 = bps[i+1].pa;
+					} // if( e.x > bps[i].x && e.x < bps[i+1].x )
+				} // for (let i = 0; i < bps.length - 1; i += 1 )
+			} // if (!bl) .. else
+		} else if (e instanceof CircleEvent) {
+			drawCircle(e.ref.x, e.ref.y, e.r)
+		} // if (e instanceof Site) .. else ..
+	} // while
 }
 
 /*****************************************
@@ -257,8 +300,8 @@ function drawLineOnCanvas(p1, p2, col) {
 function drawAnimation() {
 	ctx.fillStyle = "white";
 	ctx.fillRect(0, 0, SIZE_CANVAS_X, SIZE_CANVAS_Y);
-	parabolaResearch3();
-  // calcVoronoi();
+	parabolaResearch();
+	calcVoronoi();
 	sites.forEach(s => {
 		drawPoint(s, "blue", 4);
 	});
@@ -296,18 +339,12 @@ let parabolaAbc = function(a, b, c) {
 	}
 }
 
-let angle1 = 0;
-let angle2 = Math.PI;
-let radius = 20;
-let a = 0;
-let tdir   = SIZE_CANVAS_X / 2 + 40;
-
 function parabolaResearch() {
+	drawLineOnCanvas({x: 0, y:tdir},{x: SIZE_CANVAS_X, y:tdir}, "grey");
 	let p1 = { x: Math.cos(angle1 + a) * radius + SIZE_CANVAS_X / 2,
 						 y: Math.sin(angle1 + a) * radius + SIZE_CANVAS_Y / 2 }
   let p2 = { x: Math.cos(angle2 + a) * radius + SIZE_CANVAS_X / 2,
 			 		 	 y: Math.sin(angle2 + a) * radius + SIZE_CANVAS_Y / 2 }
-
 
 	drawPoint( p1, "blue" );
 	drawPoint( p2, "red" );
@@ -315,13 +352,10 @@ function parabolaResearch() {
 	drawParabola( p1, tdir, 0, SIZE_CANVAS_X )
 	drawParabola( p2, tdir, 0, SIZE_CANVAS_X )
 
-	let i = findIntersect( p1, p2, tdir );
+	let i  = findIntersect( p1, p2, tdir );
 	let dp = getParabolaFromFokusAndDir( p1, tdir );
 	drawPoint( {x: i.l, y: dp.valuex(i.l)}, "orange", 6);
 	drawPoint( {x: i.r, y: dp.valuex(i.r)}, "green", 6);
-
-	a += 0.05;
-	if ( a >= Math.PI ) a = 0;
 }
 
 function parabolaResearch2() {
@@ -344,9 +378,6 @@ function parabolaResearch2() {
 	let dp = getParabolaFromFokusAndDir( p1, tdir );
 	drawPoint( {x: i.l, y: dp.valuex(i.l)}, "orange", 6);
 	drawPoint( {x: i.r, y: dp.valuex(i.r)}, "green", 6);
-
-	a += 0.05;
-	if ( a >= Math.PI ) a = 0;
 }
 
 
