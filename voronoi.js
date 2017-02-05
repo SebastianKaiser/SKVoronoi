@@ -220,21 +220,21 @@ function calcVoronoi() {
 				bl		 	 = new BlNode(e, undefined, undefined);
 			} else {
 				let bps  = [];
-				bps[0]   = { x:0, pa: bl};
+				bps[0]   = { x: 0, pa: bl };
 				let c = bl.n;
 				for (let i = 1; c && c.n; c = c.n ) {
 					bps[i] = { x: findIntersect( c, c.n, sweepy ).l,
 										 pa: c };
 					i += 1;
 				}
-				bps[bps.length] =  {x: SIZE_CANVAS_X, pa: c};
+				if (c) { 
+					bps[bps.length] =  {x: SIZE_CANVAS_X, pa: c}
+				};
 				for (let i = 0; i < bps.length - 1; i += 1 ) {
 					if( e.x > bps[i].x && e.x < bps[i+1].x ) {
 						let nn = new BlNode(e, bps[i].pa, bps[i+1].pa);
-						bps[i].n 	 = nn;
-						nn.p 			 = bps[i].pa;
-						bps[i+1].p = nn;
-						nn.n 			 = bps[i+1].pa;
+						bps[i].pa.n 	 = nn;
+						bps[i+1].pa.p  = nn;
 					} // if( e.x > bps[i].x && e.x < bps[i+1].x )
 				} // for (let i = 0; i < bps.length - 1; i += 1 )
 			} // if (!bl) .. else
