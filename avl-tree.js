@@ -3,6 +3,8 @@
 Avl Tree
 */
 
+let avl_node_id = 0;
+
 // get some left or right- mostest element of a sub tree
 function getExtreme(node, accessor,
                     process = function(p,c) { return c; }) {
@@ -43,6 +45,8 @@ let AvlTreeNode = function(value,
 	this.left    = undefined;
 	this.right   = undefined;
 	this.height  = 0;
+  this.a_id    = avl_node_id;
+  avl_node_id  += 1;
 }
 
 AvlTreeNode.prototype.balfac = function() {
@@ -161,13 +165,14 @@ AvlTreeNode.prototype.balance = function() {
 
 AvlTreeNode.prototype.deleteNode = function(toDelete) {
 	let retval = this;
-	if (this.comp(toDelete) < 0) {
+  let comp = this.comp(toDelete.value);
+	if (comp < 0) {
 		// value is smaller => left
 		this.left = this.left ? this.left.deleteNode(toDelete) : undefined;
-	} else if (this.comp(toDelete) > 0) {
+	} else if (comp > 0) {
 		// value is bigger => right
 		this.right = this.right ? this.right.deleteNode(toDelete) : undefined;
-	} else if (this.comp(toDelete) == 0) {
+	} else if (comp == 0) {
 		// found the desired node => delete it
 		let newNode = undefined;
 		if (!this.left && !this.right) {
@@ -219,11 +224,12 @@ AvlTreeNode.prototype.findNode =
 	function(e, process = function(e, n) {
 		return n
 	}) {
-		if (this.comp(e) == 0) {
+    let comp = this.comp(e);
+    if (comp == 0) {
 			return process(e, this);
-		} else if (this.left && this.comp(e) < 0) {
+		} else if (this.left && comp < 0) {
 			return this.left.findNode(e);
-		} else if (this.right && this.comp(e) > 0) {
+		} else if (this.right && comp > 0) {
 			return this.right.findNode(e);
 		} else {
 			return undefined;
@@ -238,6 +244,25 @@ AvlTreeNode.prototype.inorder =
     process(this);
     this.right && this.right.inorder(process);
 }
+
+// find smallest element in subtree
+AvlTreeNode.prototype.smallest = function() {
+	let cursor = this;
+	while( cursor.left ) {
+		cursor = cursor.left;
+	}
+	return cursor;
+}
+
+// find biggest element in subtree
+AvlTreeNode.prototype.biggest = function() {
+	let cursor = this;
+	while( cursor.right ) {
+		cursor = cursor.right;
+	}
+	return cursor;
+}
+
 
 function drawTree(node, cp, step) {
 	if (!node) return;

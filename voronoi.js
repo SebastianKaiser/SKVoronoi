@@ -5,7 +5,7 @@ const SIZE_CANVAS_X = 600;
 const SIZE_CANVAS_Y = 600;
 const HALFX = SIZE_CANVAS_X / 2;
 const HALFY = SIZE_CANVAS_Y / 2;
-const NO_SITES = 1 << 4;
+const NO_SITES = 1 << 3;
 
 /**
 	Initializsation of stuff
@@ -25,25 +25,32 @@ let pqueue  = new PriorityQueue({
 		return yd;
 	}
 });
+let undoList = [];
 
 let angle1 = 0;
 let angle2 = Math.PI;
 let radius = 100;
 let a = 0;
-let tdir   = SIZE_CANVAS_X / 2 + 100;
+let tdir   = SIZE_CANVAS_X / 2 + 120;
 
 let bpt 		= undefined;
+// pointer to list of beach line segments
+let blsFirst = undefined;
 let sweepy  = 0;
 
 document.getElementById("back").onclick = function() {
 	a -= 0.05;
 	if ( a <= 0 ) a = 2 * Math.PI;
+	tdir2 -= 1;
+	if ( tdir2 <= Math.max(p21.y, p22.y)) tdir2 = SIZE_CANVAS_Y;
 	drawAnimation();
 }
 
 document.getElementById("next").onclick = function() {
 	a += 0.05;
 	if ( a >= 2 * Math.PI ) a = 0;
+	tdir2 += 1;
+	if ( tdir2 >= SIZE_CANVAS_Y ) tdir2 = Math.max(p21.y, p22.y);
 	drawAnimation();
 }
 
@@ -69,7 +76,7 @@ function init() {
 }
 
 /******************************************************
-algorithm
+Data structures
 */
 let Site = function(point) {
 	this.x = point.x;
@@ -77,7 +84,11 @@ let Site = function(point) {
 }
 
 Site.prototype.toString = function() {
-	return `(${this.x}, ${this.y})`
+	return `(${this.x}, ${this.y})`;
+}
+
+Site.prototype.equals = function(other) {
+	return (this.x == other.x) && (this.y == other.y);
 }
 
 let CircleEvent = function(point, radius, ref) {
@@ -123,9 +134,35 @@ DegenParabolaAhk.prototype.valuex = function(x) {
 }
 
 DegenParabolaAhk.prototype.draw = function(xl, xr, color) {
-
 }
 
+let BeachlineSegment = function(sitepoint, avlnode, prev, next) {
+	this.sitepoint = sitepoint;
+	this.avlnode   = avlnode;
+	this.prev			 = prev;
+	this.next 		 = next;
+}
+
+let DcelVertex  = function(halfedge) {
+	this.halfedge = halfedge;
+}
+
+let DcelHalfEdge = function(vertex, face, next, twin) {
+	this.vertex 	= vertex;
+	this.face 		= face;
+	this.next 		= next;
+	this.twin			= twin;
+}
+
+let DcelFace = function(edge) {
+	this.edge 		= edge;
+}
+
+/******************************************************
+math stuff
+*/
+// calculates intersection points of two parabolas
+// return { l: ipoint1, r: ipoint2 }
 function intersect(p, op) {
 	if( p instanceof DegenParabolaAhk ) {
 		return {l: p.h, r: p.h};
@@ -139,6 +176,7 @@ function intersect(p, op) {
 	return rootsOfQuadratic(ra, rb, rc);
 }
 
+// calc roots of a quadratic
 function rootsOfQuadratic(a, b, c) {
 	if( a == 0 ) return { l: -c / b, r: -c / b };
 	let d = Math.sqrt(b * b - 4 * a * c);
@@ -191,13 +229,29 @@ function getParabolaFromFokusAndDir(focus, diry) {
 	return new ParabolaAhk(a, h, k);
 }
 
+// finds the intersections of two parabolas
+// in: sites site1 and site2
+// return: { l: ipoint1, r: ipoint2 }
+function findIntersect(site1, site2, tdir) {
+	let p1  = getParabolaFromFokusAndDir( site1, tdir );
+	let p2  = getParabolaFromFokusAndDir( site2, tdir );
+	let i	  = (site1.y > site2.y) ? intersect(p1, p2, tdir): intersect(p2, p1, tdir)
+	// console.log(`findIntersect(${site1}, ${site2}, ${tdir}) = {${i.l}, ${i.r}}`);
+	return i;
+}
+/******************************************************
+algorithm
+*/
 // let testsites = undefined;
 // let testsites = [{x:323,y:509},{x:695,y:619},{x:610,y:635}];
-let testsites = [{x:323,y:309},{x:495,y:419},{x:410,y:435}];
+// let testsites = [{x:323,y:309},{x:495,y:419},{x:410,y:435}];
+let testsites = [{x:60,y:323},{x:393,y:374},{x:259,y:427},{x:429,y:530}];
 
 function initAlgorithm() {
 	bpt = undefined;
+	circleList = [];
 	pqueue.clear();
+	firstBls = undefined;
 
 	if(testsites) {
 		for (let i = 0; i < testsites.length; i++) {
@@ -207,98 +261,100 @@ function initAlgorithm() {
 	} else {
 		for (let i = 0; i < NO_SITES; i++) {
 			sites[i] = new Site( { x: Math.round( Math.random() * SIZE_CANVAS_X),
-													   y: Math.round( Math.random() * HALFY) + HALFY} );
+													   y: Math.round( Math.random() * HALFY) + HALFY } );
 			pqueue.queue(sites[i]);
 		}
 	}
 }
 
-function findIntersect(site1, site2, tdir) {
-	let p1  = getParabolaFromFokusAndDir( site1, tdir );
-	let p2  = getParabolaFromFokusAndDir( site2, tdir );
-	// let i	  = intersect(p1, p2, tdir);
-	let i	  = (site1.y > site2.y) ? intersect(p1, p2, tdir): intersect(p2, p1, tdir)
-	console.log(`findIntersect(${site1}, ${site2}, ${tdir}) = {${i.l}, ${i.r}}`);
-	return i;
-}
-
 /*
 comparator function:
+-1 means e is smaller than this.value
+1 means e is bigger than this.value
+0 e is (kind of) equal to this.value
 */
 let vcomp = function( e ) {
 	// findIntersect returns NaN if one of it's arguments is undefined
 	let lt = this.left ?
-		chooseRight( biggest(this.left).value, this.value, sweepy ) : undefined;
+		chooseRight( this.left.biggest().value, this.value, sweepy ) : Number.MIN_SAFE_INTEGER;
+	if ( e.x <=  lt ) return -1; // proceed to the left
 	let tr = this.right ?
-		chooseLeft( this.value, smallest(this.right).value, sweepy ) : undefined;
-	//console.log(`e.x => ${e.x}, lt => ${lt}, rt => ${tr}`);
-	if ( !lt && !tr ) return 0;
-	if ( lt <= e.x && e.x <= tr) return 0;
-	if ( e.x < lt ) return -1;
-	if ( e.x > tr ) return 1;
+		chooseRight( this.value, this.right.smallest().value, sweepy ) : Number.MAX_SAFE_INTEGER;
+	if ( e.x >  tr ) return 1; // proceed to the right
+  return 0;
 }
 
+// given to sites site1 and site2, returns the leftmost intersection point (wrt the x-axis) of the 
+// two parabolas defined by the sites as focus and global tdir as directrix
 function chooseLeft( site1, site2 ) {
 	let fi = findIntersect( site1, site2, sweepy );
 	return (site1.y > site2.y) ? fi.l : fi.r;
 }
 
+// given to sites site1 and site2, returns the rightmost intersection point (wrt the x-axis) of the 
+// two parabolas defined by the sites as focus and global tdir as directrix
 function chooseRight( site1, site2 ) {
 	let fi = findIntersect( site1, site2, sweepy );
 	return (site1.y > site2.y) ? fi.r : fi.l;
 }
 
-// find smallest element
-function smallest( node ) {
-	return getExtreme( node, function( node ) {return node.left} );
-}
-
-// find biggest element
-function biggest( node ) {
-	return getExtreme( node, function( node ) {return node.right} );
-}
-
-// this breaks up a given node
+// callback for avltreenode, called by insert method
+// this breaks up this into three nodes, left and right contain the same value
+// as this, the new root contains the new value
 let insertProcess = function( value, rel ) {
+
 	// left subtree
-	let nl 		 = new AvlTreeNode( this.value, this, vcomp, insertProcess);
-	nl.left    = this.left;
-	this.left  = nl;
+	let nl 		  = new AvlTreeNode( this.value, this, vcomp, insertProcess );
+	nl.left     = this.left;
+	this.left   = nl;
+	nl.bls 			= new BeachlineSegment( this.value, nl, this.bls.prev, undefined );
+	// store the leftest bls
+	if(this.bls.prev) {
+		this.bls.prev.next = nl.bls;
+	} else {
+		blsFirst  = nl.bls;
+	}
+
 	// right subtree
-	let nr 		 = new AvlTreeNode( this.value, this, vcomp, insertProcess);
-	nr.right 	 = this.right;
-	this.right = nr;
+	let nr 		  = new AvlTreeNode( this.value, this, vcomp, insertProcess );
+	nr.right 	  = this.right;
+	this.right  = nr;
+	nr.bls 			= new BeachlineSegment( this.value, nr, undefined, this.bls.next );
+	if(this.bls.next) {
+		this.bls.next.prev = nl.bls;
+	} 
+	
 	// swap value
-	this.value = value;
+	this.value  = value;
 	this.height = this.calcHeight();
+
+	let newbls  = new BeachlineSegment( value, this, nl.bls, nr.bls );
+	this.bls 		= newbls;
+	nl.bls.next = nr.bls.prev = newbls;
+	createCircleEvent(this);
 }
 
-let circleList = []
+function createCircleEvent( node ) {
+}
+
+let graph = undefined;
 
 function calcVoronoi(e, bptree) {
 	sweepy = e.y;
-
-	if( e instanceof Site ) {
-		circleList.push(e);
-		if(circleList.length == 3) {
-			let cv = circumVector(circleList[0], circleList[1], circleList[2]);
-			let c  = circleList.shift();
-			let ce = new CircleEvent({x: cv.p.x, y: cv.p.y + cv.r}, cv.r, cv.p);
-			console.log(`creating circle event ${ce}`);
-			pqueue.queue(ce);
-		}
-	}
-
 	drawPoint(e, "blue", 5);
-	if (e instanceof Site) {
+	if( e instanceof Site ) {
 		if (!bptree) {
-			bptree = new AvlTreeNode(e, undefined, vcomp, insertProcess);
+			bptree     = new AvlTreeNode(e, undefined, vcomp, insertProcess);
+			blsFirst   = bptree.bls = new BeachlineSegment(e, bptree, undefined, undefined);
 		} else {
-			bptree = bptree.insert(e);
+			bptree     = bptree.insert(e);
 		}
+		// graph(e) = e;
+		// wenn breakpoint, woher
 	} else if (e instanceof CircleEvent) {
-		drawCircle(e.ref.x, e.ref.y, e.r);
-		console.log(find(e.ref).value);
+		drawCircle(e.ref.x, e.ref.y, e.r, "red");
+		console.log(`e.ref => ${e.ref.x}, ${e.ref.y}`);
+		bptree   = bptree.deleteNode(e.ref);
 	}
 	return bptree;
 }
@@ -312,15 +368,35 @@ function drawAnimation() {
 	if (pqueue.length == 0) {
 		initAlgorithm();
 	}
-	// parabolaResearch();
-	let e = pqueue.dequeue()
+	//  parabolaResearch2();
+	drawVoronoi();
+}
+
+function drawVoronoi() {
+  let e = pqueue.dequeue();
+	undoList.push(e);
 	bpt = calcVoronoi(e, bpt);
-	drawTree(bpt, {x: 300, y: 300}, 150 );
-	drawBeachline(bpt);
+	drawTree(bpt, {x: 300, y: 50}, 150 );
+	drawBeachline2(bpt);
 	sites.forEach( c => {
 		drawPoint( c, "red", 4);
 	});
 	drawLineOnCanvas({x: 0, y:sweepy},{x: SIZE_CANVAS_X, y:sweepy}, "grey");
+}
+
+function drawBeachline2(egal) {
+	console.log("draw beachline");
+	let curr   = blsFirst;
+	let currX  = 0;
+	while(curr) {
+		let next = curr.next;
+		let bp   = next ? Math.min( chooseRight( curr.sitepoint, next.sitepoint ), SIZE_CANVAS_X - 1 ) : SIZE_CANVAS_X - 1;
+		if ( bp >= SIZE_CANVAS_X ) return;
+		console.log(`drawParabola( ${curr.sitepoint}, ${sweepy}, ${currX}, ${bp} )`);
+		drawParabola( curr.sitepoint, sweepy, currX, bp );
+		currX    = bp;
+		curr     = curr.next;
+	}
 }
 
 function drawBeachline(bptree) {
@@ -342,13 +418,13 @@ function drawBeachline(bptree) {
 function makeBlList( n, list ) {
 	if ( n.left ) {
 		makeBlList(n.left, list);
-		let x = chooseRight(biggest(n.left).value, n.value, sweepy);
+		let x = chooseRight(n.left.biggest().value, n.value, sweepy);
 		list.push(x);
 	}
 	// if ( n.value.y == sweepy ) return;
 	list.push( n.value );
 	if ( n.right ) {
-		let x = chooseRight(n.value, smallest(n.right).value, sweepy);
+		let x = chooseRight(n.value, n.right.smallest().value, sweepy);
 		list.push(x);
 		makeBlList(n.right, list);
 	}
@@ -424,12 +500,16 @@ let parabolaAbc = function(a, b, c) {
 function parabolaResearch() {
 	drawLineOnCanvas({x: 0, y:tdir},{x: SIZE_CANVAS_X, y:tdir}, "grey");
 	let p1 = { x: Math.cos(angle1 + a) * radius + SIZE_CANVAS_X / 2,
-						 y: Math.sin(angle1 + a) * radius + SIZE_CANVAS_Y / 2 }
+						 y: Math.sin(angle1 + a) * radius + SIZE_CANVAS_Y / 2 };
   let p2 = { x: Math.cos(angle2 + a) * radius + SIZE_CANVAS_X / 2,
-			 		 	 y: Math.sin(angle2 + a) * radius + SIZE_CANVAS_Y / 2 }
+			 		 	 y: Math.sin(angle2 + a) * radius + SIZE_CANVAS_Y / 2 };
+
+ 	let zw = { x: Math.min(p1.x,p2.x) + Math.abs(p2.x - p1.x)/2,
+ 						 y: Math.min(p1.y,p2.y) + Math.abs(p2.y - p1.y)/2 };
 
   drawPoint( p1, "green", 3 );
  	drawPoint( p2, "orange", 3 );
+ 	drawPoint( zw, "blue", 3 );
 
 	drawParabola( p1, tdir, 0, SIZE_CANVAS_X )
 	drawParabola( p2, tdir, 0, SIZE_CANVAS_X )
@@ -443,35 +523,32 @@ function parabolaResearch() {
 										"black" );
 }
 
-function parabolaResearch3() {
-	let paras = [];
-	let no = 3;
-	let step = SIZE_CANVAS_X / no;
-	for ( let i = 0; i < no; i += 1 ) {
-		let x = Math.round( Math.random() * step ) + i * step;
-		let y = Math.round( Math.random() * 20 ) + SIZE_CANVAS_Y / 2;
-		paras[ i ] = { x: x, y: y };
-	}
+let p21 = { x: Math.round( Math.random() * SIZE_CANVAS_X),
+					  y: Math.round( Math.random() * HALFY) + HALFY };
+let p22 = { x: Math.round( Math.random() * SIZE_CANVAS_X),
+				    y: Math.round( Math.random() * HALFY) + HALFY };
+let tdir2 = Math.max(p21.y, p22.y);
 
-	let bps = [];
-	let last = 0;
-	for ( let i = 0; i < no - 1; i += 1 ) {
-		drawPoint(paras[i]);
-		let ci = findIntersect(paras[i], paras[i+1], tdir).l;
-		let pd = getParabolaFromFokusAndDir(paras[i], tdir);
-		drawPoint({x: ci, y: pd.valuex( ci )}, "blue", 4);
-		bps[i] = { l: last, r: ci, p: paras[i] };
-		last = bps[i].r;
-	}
-	drawPoint(paras[no-1]);
-	bps[no-1] = {l: last, r: SIZE_CANVAS_X, p: paras[no-1]};
+function parabolaResearch2() {
+	drawLineOnCanvas({x: 0, y:tdir2},{x: SIZE_CANVAS_X, y:tdir2}, "grey");
 
-	drawLineOnCanvas({x: 0, y: tdir},{x: SIZE_CANVAS_X, y: tdir}, "lightgrey");
-	for ( let i = 0; i < no; i += 1 ) {
-		console.log(`l:${bps[i].l} r:${bps[i].r}`)
-		// drawParabola( bps[i].p, tdir, 0, SIZE_CANVAS_X, "red" );
-		drawParabola( bps[i].p, tdir, bps[i].l, bps[i].r );
-	}
+ 	let zw = { x: Math.min(p21.x,p22.x) + Math.abs(p22.x - p21.x)/2,
+ 						 y: Math.min(p21.y,p22.y) + Math.abs(p22.y - p21.y)/2 };
+
+  drawPoint( p21, "green", 3 );
+ 	drawPoint( p22, "orange", 3 );
+ 	drawPoint( zw, "blue", 3 );
+
+	drawParabola( p21, tdir2, 0, SIZE_CANVAS_X )
+	drawParabola( p22, tdir2, 0, SIZE_CANVAS_X )
+
+	let i  = findIntersect( p21, p22, tdir2 );
+	let dp = getParabolaFromFokusAndDir( p21, tdir2 );
+	drawPoint( {x: i.l, y: dp.valuex(i.l)}, "orange", 6);
+	drawPoint( {x: i.r, y: dp.valuex(i.r)}, "green", 6);
+	drawLineOnCanvas(	{x: i.l, y: dp.valuex(i.l)},
+									  {x: i.r, y: dp.valuex(i.r)},
+										"black" );
 }
 
 // star function
