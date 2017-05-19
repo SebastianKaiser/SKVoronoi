@@ -1,0 +1,22 @@
+{
+  "name": "skvoronoi",
+  "version": "1.0.0",
+  "description": "voronoi diagrams",
+  "main": "avl-tree-test.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SebastianKaiser/SKVoronoi.git"
+  },
+  "author": "Sebastian Kaiser",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SebastianKaiser/SKVoronoi/issues"
+  },
+  "homepage": "https://github.com/SebastianKaiser/SKVoronoi#readme",
+  "devDependencies": {
+    "jasmine": "^2.6.0"
+  }
+}

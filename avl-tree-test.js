@@ -3,11 +3,8 @@ const SIZE_CANVAS_Y = 800;
 
 let ctx = undefined;
 
-let size        = 1 << 6
+let size        = 1 << 6;
 let at          = undefined;
-let values      = [62,54,2,14,18,50,92,26];
-let values2     = [27, 55, 41, 38, 75, 49, 97, 11];
-let values3     = [54,80,50,40,1,59,73,90,99,80,25,35,90,70,78,63];
 let insertnodes = 1;
 let deletenodes = 1;
 let timerId     = undefined;
@@ -15,7 +12,7 @@ let timerId     = undefined;
 window.onload = function() {
  	init();
  	y = 0;
-  timerId = window.setInterval( drawAnimation, 3 );
+  timerId = undefined;
 };
 
 document.getElementById("pause").onclick = function() {
@@ -23,6 +20,12 @@ document.getElementById("pause").onclick = function() {
     pause()
   } else {
     timerId = window.setInterval( drawAnimation, 3 );
+  }
+}
+
+document.getElementById("step").onclick = function() {
+  drawAnimation();
+  if(!timerId) {
   }
 }
 
@@ -48,45 +51,72 @@ function init() {
 /****************************************************
 graphics
 */
-
 function drawAnimation() {
+  ctx.fillStyle = "white";
+  ctx.fillRect(0, 0, SIZE_CANVAS_X, SIZE_CANVAS_Y);
   if (insertnodes < values.length) {
+    $('#info').text(`inserting ${values[insertnodes]}`);
     at = at.insert( values[insertnodes] );
+    drawTree(at, {x: 300, y: 30}, 150 );
+    at.testSanity()
     insertnodes += 1;
-    assert("lost a node inserting", countNodes( at, 0 ) == insertnodes )
-  } else if (insertnodes == values.length && deletenodes < values.length) {
-    at = at.deleteNode( values[deletenodes]);
-    assert(`lost nodes deleting ${values[deletenodes]}`,
-            countNodes( at, 0 ) == (values.length - deletenodes) );
+    assert("lost a node inserting", countNodes( at, 0 ) == insertnodes );
+  } else if (insertnodes == values.length && deletenodes < values.length - 1) {
+    $('#info').text(`deleting ${values[deletenodes]}`);
+    at = at.deleteValue(values[deletenodes]);
+    drawTree(at, {x: 300, y: 30}, 150 );
+    at.testSanity()
     deletenodes += 1;
   } else {
     createValues();
   }
-  ctx.fillStyle = "white";
-  ctx.fillRect(0, 0, SIZE_CANVAS_X, SIZE_CANVAS_Y);
-  drawTree(at, {x: 300, y: 30}, 150 );
 }
 
-
 /****************************************************
- Tests
+* Tests
 */
 function createValues() {
-  values = []
-  for ( let i = 0; i < size; i += 1 ) {
-	 	values[i] = Math.round( Math.random() * 100 );
-	}
+  values = [];
+  // values = [62,54,2,14,18,50,92,26];
+  // values = [27, 55, 41, 38, 75, 49, 97, 11];
+  // values = [54,80,50,40,1,59,73,90,99,80,25,35,90,70,78,63];
+	// values = [831, 972, 988, 467];
+  // values = [342, 478, 858, 817]
+	// values = [ 447, 116, 811, 332]
+	// values = [212, 108, 456, 497];
+  // values = [974, 685, 896, 774, 348, 681, 927, 512]
+  // values = [578, 430, 715, 846, 118, 17, 317, 506]
+  // values = [570, 483, 795, 321, 405, 886, 419, 920]
+  let keys = [];
+	let MAX_VAL = 1000;
+  if ( values.length == 0 ) {
+    for ( let i = 0; i < size; i += 1 ) {
+     	values[i] = Math.round( Math.random() * MAX_VAL );
+    	while (keys.hasOwnProperty(values[i])) {
+    	 	values[i] = Math.round( Math.random() * MAX_VAL );
+    	}
+    	keys[values[i]] = true;
+  	}
+  }
   at = new AvlTreeNode(values[0]);
   insertnodes = 1;
-  deletenodes = 1;
+  deletenodes = 0;
+	console.log(values);
+}
+
+function depthTest(node) {
+	if(!node) return 0;
+	return 1 + Math.max(depthTest(node.left), depthTest(node.right));
 }
 
 function countNodes( node, count ) {
   if (!node) return 0;
   if (count > size) throw "Error in structure";
-  return countNodes( node.left, count+1 ) + countNodes( node.right, count+1 ) + 1;
+  return countNodes( node.left, count + 1 ) + countNodes( node.right, count + 1 ) + 1;
 }
 
-function assert( description ,test ) {
-  if ( !test ) throw `${description} ${values}`;
+function assert( description, test ) {
+  if ( !test ) {
+		throw `${description} ${values}`;
+	}
 }

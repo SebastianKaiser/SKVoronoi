@@ -141,4 +141,30 @@ In meiner Beachline enthalten die Knoten die Sites. Die Kanten im Baum bedeuten 
 Habe ich überhaupt verstanden, was ich hier tue?
 
 Grundsätzlich ist es so, das eine neue Site nur einen Brechpunkt erzeugt, weil die Parabel zu einer vertikalen Linie degeneriert, wenn der Fokus aus der Direktrix (Sweepline) liegt. D.h. ich muss nur einen Beachline-Abschnitt suchen, der direkt vertikal über der neuen Site liegt.
-Ich habe also mehr oder weniger eine x-Koordinate. Ich berechne den ersten Brechpunkt, wenn x links davon liegt weiter im linken Subbaum, sonst im rechten. Wenn der Subbaum nicht da ist, füge ein neues Kind ein. Dann hoffen, das der AVL-Baum funktioniert.
+Ich habe also mehr oder weniger eine x-Koordinate. Ich berechne den ersten Brechpunkt, wenn x links davon liegt weiter im linken Subbaum, sonst im rechten. Wenn der Subbaum nicht da ist, füge ein neues Kind ein. Dann hoffen, dass der AVL-Baum funktioniert.
+
+
+29.4.2017:
+HAbeeine doppelt verlinkte Liste für die Beachlinesegment eingebaut. Jetzt sollte es leicht sein, die Circle Events zu erzeugen.
+
+Auswählen die sites.
+Beispiele Beachline:
+a <-> b <-> a
+a <-> b <-> a <-> c <-> a
+a <-> b <-> d <-> b <-> a <-> c <-> a
+
+Also, wenn ein Knoten einsortiert wird, dann erzeuge ich einen Circleevent fpr node.prev und node.next, falls möglich.
+
+Der Event soll feuern, wenn sweepy == event.y + event.r. Tut er jetzt auch.
+
+Jetzt muss noch klar werden, was passiert, wenn er feuert.
+Semantisch soll.
+- ein Beachlinesegment gelöscht werden (d.h. ein Knoten im Baum und ein Bls in der doppelt verketteten Liste)
+- eine Knoten erzeugt werden
+- vorhandene Halfedges müssen upgedatet werden ( wie )
+- Evtl. muss eine ( mehrere ? ) Halfedge erzeugt werden ( Habe ich noch nicht verstanden )
+
+Zuerst den Knoten löschen. Fragen:
+- Welchen ? Der, der in der Referenz steht ? Duh! Aber ist das der richtige ? Das ist noch eine dunkle Wolke.
+Wenn der Circle Event feuert, verschwindet ein BLS. Das BLS wird repräsentiert durch einen Knoten und zwei Verbindungen.
+

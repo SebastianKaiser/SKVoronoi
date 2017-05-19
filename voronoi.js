@@ -91,16 +91,23 @@ Site.prototype.equals = function(other) {
 	return (this.x == other.x) && (this.y == other.y);
 }
 
+// Circle event. y contains the y coordinate, where this event is supposed to fire,
+// meaning this.y == point.x + radius.
 let CircleEvent = function(point, radius, ref) {
 	this.p = point;
-	this.x = point.x;
-	this.y = point.y;
-	this.r = radius;
+	this.x   = point.x;
+	this.y   = point.y + radius;
+	this.r 	 = radius;
 	this.ref = ref;
 }
 
 CircleEvent.prototype.toString = function() {
 	return `(${this.x}, ${this.y}) ${this.r} ${this.ref}`
+}
+
+CircleEvent.prototype.draw = function() {
+	drawCircle(this.p.x, this.p.y, this.r, "blue");
+	drawPoint({x: this.x, y:this.y}, "green", 3);
 }
 
 let ParabolaAhk = function(a, h, k) {
@@ -136,9 +143,9 @@ DegenParabolaAhk.prototype.valuex = function(x) {
 DegenParabolaAhk.prototype.draw = function(xl, xr, color) {
 }
 
-let BeachlineSegment = function(sitepoint, avlnode, prev, next) {
+let BeachlineSegment = function(sitepoint, refnode, prev, next) {
 	this.sitepoint = sitepoint;
-	this.avlnode   = avlnode;
+	this.refnode   = refnode;
 	this.prev			 = prev;
 	this.next 		 = next;
 }
@@ -196,6 +203,7 @@ function bc(a, b, c) {
 }
 
 // calculate the center of the circumcircle of three points A, B, C
+// A,B,C are object with attributes x and y
 function circumVector(A, B, C) {
 	let a = distance(B, C);
 	let b = distance(C, A);
@@ -219,6 +227,7 @@ function distance(p, op) {
 	return Math.sqrt(diffx * diffx + diffy * diffy);
 }
 
+// creates a parabola from a given focus and a directrix
 function getParabolaFromFokusAndDir(focus, diry) {
 	if ( focus.y === diry) {
 		return new DegenParabolaAhk( 0, focus.x, (focus.y + diry) / 2 );
@@ -239,9 +248,11 @@ function findIntersect(site1, site2, tdir) {
 	// console.log(`findIntersect(${site1}, ${site2}, ${tdir}) = {${i.l}, ${i.r}}`);
 	return i;
 }
+
 /******************************************************
 algorithm
 */
+
 // let testsites = undefined;
 // let testsites = [{x:323,y:509},{x:695,y:619},{x:610,y:635}];
 // let testsites = [{x:323,y:309},{x:495,y:419},{x:410,y:435}];
@@ -284,14 +295,14 @@ let vcomp = function( e ) {
   return 0;
 }
 
-// given to sites site1 and site2, returns the leftmost intersection point (wrt the x-axis) of the 
+// given to sites site1 and site2, returns the leftmost intersection point (wrt the x-axis) of the
 // two parabolas defined by the sites as focus and global tdir as directrix
 function chooseLeft( site1, site2 ) {
 	let fi = findIntersect( site1, site2, sweepy );
 	return (site1.y > site2.y) ? fi.l : fi.r;
 }
 
-// given to sites site1 and site2, returns the rightmost intersection point (wrt the x-axis) of the 
+// given to sites site1 and site2, returns the rightmost intersection point (wrt the x-axis) of the
 // two parabolas defined by the sites as focus and global tdir as directrix
 function chooseRight( site1, site2 ) {
 	let fi = findIntersect( site1, site2, sweepy );
@@ -322,8 +333,8 @@ let insertProcess = function( value, rel ) {
 	nr.bls 			= new BeachlineSegment( this.value, nr, undefined, this.bls.next );
 	if(this.bls.next) {
 		this.bls.next.prev = nl.bls;
-	} 
-	
+	}
+
 	// swap value
 	this.value  = value;
 	this.height = this.calcHeight();
@@ -331,10 +342,21 @@ let insertProcess = function( value, rel ) {
 	let newbls  = new BeachlineSegment( value, this, nl.bls, nr.bls );
 	this.bls 		= newbls;
 	nl.bls.next = nr.bls.prev = newbls;
-	createCircleEvent(this);
+	createCircleEvent(newbls.prev);
+	createCircleEvent(newbls.next);
 }
 
-function createCircleEvent( node ) {
+function createCircleEvent( bls ) {
+	let p1  = bls.sitepoint;
+	if ( !bls.prev ) return;
+	let p2  = bls.prev.sitepoint;
+	if ( !bls.next ) return;
+	let p3  = bls.next.sitepoint;
+	if( p2.equals(p3) ) return;
+	let cv  = circumVector(p1,p2,p3);
+	let nce = new CircleEvent(cv.p, cv.r, bls.refnode);
+	nce.draw();
+	pqueue.queue(nce);
 }
 
 let graph = undefined;
@@ -352,9 +374,9 @@ function calcVoronoi(e, bptree) {
 		// graph(e) = e;
 		// wenn breakpoint, woher
 	} else if (e instanceof CircleEvent) {
-		drawCircle(e.ref.x, e.ref.y, e.r, "red");
-		console.log(`e.ref => ${e.ref.x}, ${e.ref.y}`);
-		bptree   = bptree.deleteNode(e.ref);
+		e.draw();
+		console.log(e.ref)
+		e.ref.removeNode();
 	}
 	return bptree;
 }
@@ -377,63 +399,27 @@ function drawVoronoi() {
 	undoList.push(e);
 	bpt = calcVoronoi(e, bpt);
 	drawTree(bpt, {x: 300, y: 50}, 150 );
-	drawBeachline2(bpt);
+	drawBeachline();
 	sites.forEach( c => {
 		drawPoint( c, "red", 4);
 	});
 	drawLineOnCanvas({x: 0, y:sweepy},{x: SIZE_CANVAS_X, y:sweepy}, "grey");
 }
 
-function drawBeachline2(egal) {
-	console.log("draw beachline");
+function drawBeachline() {
 	let curr   = blsFirst;
 	let currX  = 0;
 	while(curr) {
 		let next = curr.next;
 		let bp   = next ? Math.min( chooseRight( curr.sitepoint, next.sitepoint ), SIZE_CANVAS_X - 1 ) : SIZE_CANVAS_X - 1;
+		if ( bp < currX ) {
+			curr   = next;
+			continue;
+		}
 		if ( bp >= SIZE_CANVAS_X ) return;
-		console.log(`drawParabola( ${curr.sitepoint}, ${sweepy}, ${currX}, ${bp} )`);
 		drawParabola( curr.sitepoint, sweepy, currX, bp );
 		currX    = bp;
-		curr     = curr.next;
-	}
-}
-
-function drawBeachline(bptree) {
-	let myList = [];
-	let x = 0;
-	makeBlList(bptree, myList);
-	if( myList.length == 0 ) return;
-	myList.push(SIZE_CANVAS_X - 1);
-	console.log(`${myList}`);
-	while(myList.length > 0) {
-		let currSite = myList.shift();
-		let brpt     = myList.shift();
-		let p 			 = getParabolaFromFokusAndDir(currSite, sweepy)
-		p.draw( x, brpt, "green" );
-		x = brpt;
-	}
-}
-
-function makeBlList( n, list ) {
-	if ( n.left ) {
-		makeBlList(n.left, list);
-		let x = chooseRight(n.left.biggest().value, n.value, sweepy);
-		list.push(x);
-	}
-	// if ( n.value.y == sweepy ) return;
-	list.push( n.value );
-	if ( n.right ) {
-		let x = chooseRight(n.value, n.right.smallest().value, sweepy);
-		list.push(x);
-		makeBlList(n.right, list);
-	}
-}
-
-function makeBlList2(n) {
-	if(n.left){
-		let bigl = makeBlList(n.left);
-		let x = findIntersect(bigl, n.value);
+		curr     = next;
 	}
 }
 
