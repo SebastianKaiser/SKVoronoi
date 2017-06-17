@@ -1,170 +1,307 @@
 31.3.2017:
 
-- Brechpunkte erzeugen Kanten
-- CircleEvents erzeugen Knoten
+- Brechpunkte erzeugen Kanten CircleEvents erzeugen Knoten
 
-Wie ist der Zusammenhang zwischen DCEL und Sites ?
-	1# Facetten enthalten die Sites. Facetten entsprechen also den Voronoizellen => man kann die Site als Namen der Facette verwenden.
-  2# Zu einem Brechpunkt ist die Site bekannt (klar). Man kann also eine abstrakte Kante im DCEL erzeugen, deren entsprechenden Facettennamen man schon kennt. ??: Auf welcher Seite der Kante liegt die Site => "reziprok" zum Brechpunkt <= liegt die Info lokal vor ?
-	3# Brechpunkte zwischen den selben Sites liegen auf derselben Gerade, wenn a und b also Sites sind, dann ist (a,b) ein guter Name für eine Kante.
- 	4# CircleEvents machen nur Sinn, wenn der Knoten in der Boundingbox liegt.
-	5# Wenn alle Beachsegmente von der Site c aus der Beachline verschwunden sind, ist eine Facette fertig.
+Wie ist der Zusammenhang zwischen DCEL und Sites ? 1# Facetten enthalten die
+Sites. Facetten entsprechen also den Voronoizellen => man kann die Site als
+Namen der Facette verwenden. 2# Zu einem Brechpunkt ist die Site bekannt (klar).
+Man kann also eine abstrakte Kante im DCEL erzeugen, deren entsprechenden
+Facettennamen man schon kennt. ??: Auf welcher Seite der Kante liegt die Site =>
+"reziprok" zum Brechpunkt <= liegt die Info lokal vor ? 3# Brechpunkte zwischen
+den selben Sites liegen auf derselben Gerade, wenn a und b also Sites sind, dann
+ist (a,b) ein guter Name für eine Kante. 4# CircleEvents machen nur Sinn, wenn
+der Knoten in der Boundingbox liegt. 5# Wenn alle Beachsegmente von der Site c
+aus der Beachline verschwunden sind, ist eine Facette fertig.
 
 Wie erkennt man, dass ein Brechpunkt zu einer Kante gehört ? Guck #3
 
-Wie findet man die Sites, die man braucht, um den CircleEvent zu erzeugen ?
-	- Angrenzende Facetten
-	- Es sind nur zwei der Sites im DCEL (?). Neue Site c => neue Facette. Eine Site erzeugt Brechpunkte links und rechts auf der Beachline => zwei neue Kanten (a,c) und (c,b) (wobei b == a möglich, sogar wahrscheinlich).
-	Und a, c, b bilden den CircleEvent (?).
-	- Aber die neuen Brechpunkte hat man ja schon. Im DCEL ist aber leichter festzustellen, in welcher Lage sich die Sites zueinander befinden.
-	- Circleevents => Hinweis auf Knoten => gleiche Entfernung von drei oder mehr Sites => (a,c) == (c,b) => das entsrpechende Beachsegment von c verschwindet aus der Beachline.
-	- Länge eines Beachsegmentes: Am Anfang meist 0, am Ende 0.
+Wie findet man die Sites, die man braucht, um den CircleEvent zu erzeugen ? -
+Angrenzende Facetten - Es sind nur zwei der Sites im DCEL (?). Neue Site c =>
+neue Facette. Eine Site erzeugt Brechpunkte links und rechts auf der Beachline =>
+zwei neue Kanten (a,c) und (c,b) (wobei b == a möglich, sogar wahrscheinlich).
+Und a, c, b bilden den CircleEvent (?). - Aber die neuen Brechpunkte hat man ja
+schon. Im DCEL ist aber leichter festzustellen, in welcher Lage sich die Sites
+zueinander befinden. - Circleevents => Hinweis auf Knoten => gleiche Entfernung
+von drei oder mehr Sites => (a,c) == (c,b) => das entsrpechende Beachsegment von
+c verschwindet aus der Beachline. - Länge eines Beachsegmentes: Am Anfang meist
+0, am Ende 0.
 
 2.4.2017:
 
-CircleEvents (Wiederholung der Wiederholung):
-Das Hauptproblem ist die Auswahl (das Finden) der konstituierenden Sites.
-- Die Beachline ist eine Datenstruktur, die (so wie es jetzt implementiert ist) Sites enthält, welche gemäß der Brechpunkte sortiert sind.
-- Effektiv entsteht eine Folge von Parabelabschnitten (Beachsegment).
-- Die Parabeln sind bestimmt durch die Site (Fokus) und die Sweepline (Direktrix).
-- Wenn sich die Sweepline nach unten bewegt, werden die Beachsegmente flacher. Einzelne Segmente werden von ihren Nachbarn "erdrückt", d.h. ihre Länge schrumpft auf 0. An einer Stelle, wo dies passiert, befindet sich ein Voronoiknoten, weil sich hier drei (oder mehr) Kanten treffen.
-- Jede Kante gehört zu zwei Sites. Die Kante ist eindeutig bestimmt, es gibt nur eine solche Kante im Voronoidiagramm.
-- Ein Circleevent sagt einen Voronoiknoten vorher (kann das schief gehen?). Und zwar nimmt man drei Sites, berechnet den Kreis, und der Mittelpunkt ist der Voronoiknoten. Das gilt nur dann, wenn der Kreis leer ist (d.h. keine weitere Site enthält).
-- Der Event "feuert" wenn die Sweepline den untersten Punkt des Kreises erreicht.
-- Welche Sites muss ich wählen, um einen Circleevent zu erzeugen.
-	- Drei Beachsegmente der entsprechenden Sites müssen nebeneinander liegen.
-	- Es müssen drei paarweise verschiedene Sites sein.
-	- Die mittlere Site ist der Fokus des Segments, das verschwindet. Das
-- Die naive Lösung wär also:
- 	- Baue die Beachline
-	- Durchlaufe die Beachline
-	- wenn drei Beachsegmente unterschiedlicher Sites aufeinander folgen, erzeuge den Beachevent.
-- Aber
-	- scheint ineffizient (Jedesmal die Beachline durchlaufen ?)
+CircleEvents (Wiederholung der Wiederholung): Das Hauptproblem ist die Auswahl
+(das Finden) der konstituierenden Sites. - Die Beachline ist eine Datenstruktur,
+die (so wie es jetzt implementiert ist) Sites enthält, welche gemäß der
+Brechpunkte sortiert sind. - Effektiv entsteht eine Folge von Parabelabschnitten
+(Beachsegment). - Die Parabeln sind bestimmt durch die Site (Fokus) und die
+Sweepline (Direktrix). - Wenn sich die Sweepline nach unten bewegt, werden die
+Beachsegmente flacher. Einzelne Segmente werden von ihren Nachbarn "erdrückt",
+d.h. ihre Länge schrumpft auf 0. An einer Stelle, wo dies passiert, befindet
+sich ein Voronoiknoten, weil sich hier drei (oder mehr) Kanten treffen. - Jede
+Kante gehört zu zwei Sites. Die Kante ist eindeutig bestimmt, es gibt nur eine
+solche Kante im Voronoidiagramm. - Ein Circleevent sagt einen Voronoiknoten
+vorher (kann das schief gehen?). Und zwar nimmt man drei Sites, berechnet den
+Kreis, und der Mittelpunkt ist der Voronoiknoten. Das gilt nur dann, wenn der
+Kreis leer ist (d.h. keine weitere Site enthält). - Der Event "feuert" wenn die
+Sweepline den untersten Punkt des Kreises erreicht. - Welche Sites muss ich
+wählen, um einen Circleevent zu erzeugen. - Drei Beachsegmente der
+entsprechenden Sites müssen nebeneinander liegen. - Es müssen drei paarweise
+verschiedene Sites sein. - Die mittlere Site ist der Fokus des Segments, das
+verschwindet. Das - Die naive Lösung wär also: - Baue die Beachline - Durchlaufe
+die Beachline - wenn drei Beachsegmente unterschiedlicher Sites aufeinander
+folgen, erzeuge den Beachevent. - Aber - scheint ineffizient (Jedesmal die
+Beachline durchlaufen ?)
 
 9.4.2017:
 
-DCEL- Doubly Connected Edge List:
-- hat drei Arten von Objekten: Vertex, Halfedge und Face
-	- Vertex: A Vertex object contains a single DCEL pointer, named "leaving", to a HalfEdge object. This pointer points to a single HalfEdge that has this Vertex object as its origin. If multiple HalfEdges have this Vertex object as their origin, the leaving pointer can point to any one of them arbitrarily.
-	- Halfedge: The HalfEdge object contains a pointer to a Vertex, named "origin", a pointer to a Face named "face", and two pointers to HalfEdges, one named "twin" and one named "next". The origin is the vertex from which the HalfEdge starts. The face is the face on the "left" side of the HalfEdge, while the twin pointer points to the HalfEdge on the "right" side of the HalfEdge that completes its edge. The "next" pointer points to the HalfEdge that starts from h->twin->origin and ends at the next vertex in h->face, traveling counterclockwise around the boundary. This pointer allows us to traverse a polygon, by following next pointers until we arrive back at the HalfEdge we began at.
-	- Face: A Face object contains a single DCEL pointer, named "edge", to a HalfEdge object. This pointer points to a single HalfEdge that has this Face object as its face. This HalfEdge can be any one of the Face object's boundary HalfEdges.
+DCEL- Doubly Connected Edge List: - hat drei Arten von Objekten: Vertex,
+Halfedge und Face - Vertex: A Vertex object contains a single DCEL pointer,
+named "leaving", to a HalfEdge object. This pointer points to a single HalfEdge
+that has this Vertex object as its origin. If multiple HalfEdges have this
+Vertex object as their origin, the leaving pointer can point to any one of them
+arbitrarily. - Halfedge: The HalfEdge object contains a pointer to a Vertex,
+named "origin", a pointer to a Face named "face", and two pointers to HalfEdges,
+one named "twin" and one named "next". The origin is the vertex from which the
+HalfEdge starts. The face is the face on the "left" side of the HalfEdge, while
+the twin pointer points to the HalfEdge on the "right" side of the HalfEdge that
+completes its edge. The "next" pointer points to the HalfEdge that starts from
+h->twin->origin and ends at the next vertex in h->face, traveling
+counterclockwise around the boundary. This pointer allows us to traverse a
+polygon, by following next pointers until we arrive back at the HalfEdge we
+began at. - Face: A Face object contains a single DCEL pointer, named "edge", to
+a HalfEdge object. This pointer points to a single HalfEdge that has this Face
+object as its face. This HalfEdge can be any one of the Face object's boundary
+HalfEdges.
 
 Wie konstruiere ich so ein DCEL in dem Voronoialgorithmus ?
 
 Für jede Site erzeuge ein Face.
 
-Jeder Breakpoint liegt auf einer Kante. Ein Breakpoint (a,b) zwischen Parabeln a und b erzeugt zwei Halfedges mit dem Namen (a,b). Die Knoten ("origin") sind noch nicht bekannt. Wenn es die Halfedges (a,b) schon gibt, passiert nichts(?). Der Face-Pointer von einer HE is a, von der anderen b (a und b müssen ja bereits existieren).
+Jeder Breakpoint liegt auf einer Kante. Ein Breakpoint (a,b) zwischen Parabeln a
+und b erzeugt zwei Halfedges mit dem Namen (a,b). Die Knoten ("origin") sind
+noch nicht bekannt. Wenn es die Halfedges (a,b) schon gibt, passiert nichts(?).
+Der Face-Pointer von einer HE is a, von der anderen b (a und b müssen ja bereits
+existieren).
 
-Wenn es zwei verschiedene Kanten gibt, muss es drei Faces geben. Also (a,b) und (b,c) => circle event
-Circle Event tritt ein => Vertex. "leaving" = a, und der origin der HE? Jeweils eine HE von (a,b) und (b,c) kriegt den Vertex als origin. Die Twins ?x
-In den Circle Event schreiben wir als Referenz a.
+Wenn es zwei verschiedene Kanten gibt, muss es drei Faces geben. Also (a,b) und
+(b,c) => circle event Circle Event tritt ein => Vertex. "leaving" = a, und der
+origin der HE? Jeweils eine HE von (a,b) und (b,c) kriegt den Vertex als origin.
+Die Twins ?x In den Circle Event schreiben wir als Referenz a.
 
-Aber diese Eintragungen sind alle nicht komplett, weswegen man sie nicht so einfach durchlaufen kann.
-Obwohl .. Face -> Halfedge -> Twin -> Face -> Halfedge -> Twin ->...
+Aber diese Eintragungen sind alle nicht komplett, weswegen man sie nicht so
+einfach durchlaufen kann. Obwohl .. Face -> Halfedge -> Twin -> Face -> Halfedge ->
+Twin ->...
 
-14.4.2017:
-Wann erzeuge ich die entsprechenden DS ?
-- Halfedges: Wenn ein Breakpoint auftritt. Faces sind bekannt. Vertices nicht.
-	- Später, wenn ich Kanten finde, wie finde ich die Halfedges, deren origin ich updaten muss?
-		Ein Knoten A hat einen Pointer "leaving", der auf die Kante verweist deren "origin" eben Knoten A ist. Ein ausgehende Kante 		sollte eine solche sein, die danach entsteht.
-	- Info: Eine Halfedge hat einen Knoten als Origin und eine "next"-Kante. Die next Kante hat auch einen Origin,und so finde ich 		dann die Knoten. (Knoten->leaving->next->Origin).
-- Vertex: Wenn ein Circle-Event auftritt. Das ist der Punkt der Unsicherheit. Hier nuss ich die Halfedges updaten. Woher weiß ich, welche ?
-- Face: Wenn ein Siteevent auftritt.
-Was ist mit der bounding box? Mit unbegrenzten Zellen?
+14.4.2017: Wann erzeuge ich die entsprechenden DS ? - Halfedges: Wenn ein
+Breakpoint auftritt. Faces sind bekannt. Vertices nicht. - Später, wenn ich
+Kanten finde, wie finde ich die Halfedges, deren origin ich updaten muss? Ein
+Knoten A hat einen Pointer "leaving", der auf die Kante verweist deren "origin"
+eben Knoten A ist. Ein ausgehende Kante 		sollte eine solche sein, die danach
+entsteht. - Info: Eine Halfedge hat einen Knoten als Origin und eine
+"next"-Kante. Die next Kante hat auch einen Origin,und so finde ich 		dann die
+Knoten. (Knoten->leaving->next->Origin). - Vertex: Wenn ein Circle-Event
+auftritt. Das ist der Punkt der Unsicherheit. Hier nuss ich die Halfedges
+updaten. Woher weiß ich, welche ? - Face: Wenn ein Siteevent auftritt. Was ist
+mit der bounding box? Mit unbegrenzten Zellen?
 
-Wenn ich das Voronoidiagramm als Graph betrachte, d.h. quantitative Information weglasse, und nur aufschreibe, dass es Knoten, Kanten und Gesichter gibt, kann ich, vorausgesetzt die DCEL ist vollständig, das Diagramm "online" wieder herstellen ? Sagen wir, ich merke mir nur die Sites, und ich weiß, zwischen Site a und Site b liegt eine Kante, und die entspringt Knoten A? Dann mache ich (der Rechner) die ganze Arbeit irgendwie doppelt. Und es ist nicht klar, dass das einfacher ist.
+Wenn ich das Voronoidiagramm als Graph betrachte, d.h. quantitative Information
+weglasse, und nur aufschreibe, dass es Knoten, Kanten und Gesichter gibt, kann
+ich, vorausgesetzt die DCEL ist vollständig, das Diagramm "online" wieder
+herstellen ? Sagen wir, ich merke mir nur die Sites, und ich weiß, zwischen Site
+a und Site b liegt eine Kante, und die entspringt Knoten A? Dann mache ich (der
+Rechner) die ganze Arbeit irgendwie doppelt. Und es ist nicht klar, dass das
+einfacher ist.
 
-Wo hakt es?
-- Edges repräsentieren Linien: Ich brauche Endknoten oder Steigungen? Vielleicht nicht am Anfang?
-- Es fehlt eine Vorstellung davon, wie ich die DS wiederfinde, die ich noch mit Informationen füllen muss (Origin in Edges usw.).
+Wo hakt es? - Edges repräsentieren Linien: Ich brauche Endknoten oder
+Steigungen? Vielleicht nicht am Anfang? - Es fehlt eine Vorstellung davon, wie
+ich die DS wiederfinde, die ich noch mit Informationen füllen muss (Origin in
+Edges usw.).
 
-Noch was gelernt -> Die Kanten des Beachline-AVL-Baumes entsprechen den Edges des DCEL. Die Knoten sind ja die Sites.
-=> Revised
-Site Event && neuer Baum -> DCEL-Face erstellen
-Site Event && Baum vorhanden -> DCEL-Face (neue Site) erstellen, in Baum einsortieren, rausfinden, wo die neue Site einsortiert wurde -> Kanten erstellen.
-Circle Event -> Knoten erstellen. Knoten hat ein leaving-Attribut, was schreiben wir rein? ....
+Noch was gelernt -> Die Kanten des Beachline-AVL-Baumes entsprechen den Edges
+des DCEL. Die Knoten sind ja die Sites. => Revised Site Event && neuer Baum ->
+DCEL-Face erstellen Site Event && Baum vorhanden -> DCEL-Face (neue Site)
+erstellen, in Baum einsortieren, rausfinden, wo die neue Site einsortiert wurde ->
+Kanten erstellen. Circle Event -> Knoten erstellen. Knoten hat ein
+leaving-Attribut, was schreiben wir rein? ....
 
-Nochmal über DCELs: Halfedges (HEs) haben ein next-Attribut und ein Face Attribut. Für alle HEs mit dem selben Face gilt, dass die Kanten das Face gegen den Uhrzeigersinn umfließen. D.h. u.a. das das Face einer HE immer "links" von der HE liegt.
-Jede HE hat einen twin, eine HE, die in umgekehrter Richtung läuft.
-this.origin == this->twin->next.origin!
-Oder auch this->next.origin == twin.origin
-Aber this.face != twin.face (twin ist andersum gerichtet -> ein anderes Face ist links).
-Diese Orientierungssache ist im Nebel!
+Nochmal über DCELs: Halfedges (HEs) haben ein next-Attribut und ein Face
+Attribut. Für alle HEs mit dem selben Face gilt, dass die Kanten das Face gegen
+den Uhrzeigersinn umfließen. D.h. u.a. das das Face einer HE immer "links" von
+der HE liegt. Jede HE hat einen twin, eine HE, die in umgekehrter Richtung
+läuft. this.origin == this->twin->next.origin! Oder auch this->next.origin ==
+twin.origin Aber this.face != twin.face (twin ist andersum gerichtet -> ein
+anderes Face ist links). Diese Orientierungssache ist im Nebel!
 
-Ich habe bei Breakpoints schon mal festgelegt, wo links und wo rechts ist. Und zwar durch die Festlegung, welches der Linke und welches der rechte Schnittpunkt der Parabeln ist. Und das ist das Kriterium, das festlegt, wie ein Siteknoten in den AVL-Baum einsortiert wird.
+Ich habe bei Breakpoints schon mal festgelegt, wo links und wo rechts ist. Und
+zwar durch die Festlegung, welches der Linke und welches der rechte Schnittpunkt
+der Parabeln ist. Und das ist das Kriterium, das festlegt, wie ein Siteknoten in
+den AVL-Baum einsortiert wird.
 
-Die Knoten im AVL-Baum sind Beachline-Abschnitte, nicht Sites reinsten Wassers. Verändert das was? Insbesondere: Die Parabeln schneiden sich normalerweise an zwei Stellen. Wie spielen diese Schnittpunkte mit dem Voronoi-Diagramm zusammen?
-Nur Parabel-Schnittpunkte zwischen Sites liegen auf Voronoigrenzen. Kann ich das nutzen? Und was heißt "zwischen"?
-Auf der Strecke zwischen zwei Sites, und zwar exakt in der Mitte der Strecke, steht eine senkrechte Linie die durch den gültigen Brechpunkt geht.
+Die Knoten im AVL-Baum sind Beachline-Abschnitte, nicht Sites reinsten Wassers.
+Verändert das was? Insbesondere: Die Parabeln schneiden sich normalerweise an
+zwei Stellen. Wie spielen diese Schnittpunkte mit dem Voronoi-Diagramm zusammen?
+Nur Parabel-Schnittpunkte zwischen Sites liegen auf Voronoigrenzen. Kann ich das
+nutzen? Und was heißt "zwischen"? Auf der Strecke zwischen zwei Sites, und zwar
+exakt in der Mitte der Strecke, steht eine senkrechte Linie die durch den
+gültigen Brechpunkt geht.
 
-Geg.: Site a am Punkt (sax, say) und Site b mit Punkt (sbx, sby) und sax < sbx (oBdA). Dann ist der Punkt in der Mitte ( sax + (sbx - sax)/2, say + (sby - say)/2).
+Geg.: Site a am Punkt (sax, say) und Site b mit Punkt (sbx, sby) und sax < sbx
+(oBdA). Dann ist der Punkt in der Mitte ( sax + (sbx - sax)/2, say + (sby -
+say)/2).
 
-16.4.2017:
-Nochmal von vorn.
-Ich will einen DCEL haben eines Voronoi-Diagramms haben.
-DCEL besteht aus Faces, Halfedges und Vertices.
-Es gibt ein Face pro Site -> bei einem Site Event kann ich eine Face erzeugen.
-Wenn es mehr als eine Site gibt, gibt es mind. eine Kante. Die entspricht einer Voronoigrenze.
-Wenn sich die Parabeln zweier Sites a und b schneiden, dann liegt die Voronoigrenze auf der Gerade, die durch die zwei Schnittpunkte festgelegt ist.
-D.h. wenn ich die Steigung (Orientierung der Kante) wissen will, kann ich die mittels dieser Schnittpunkte berechnen.
+16.4.2017: Nochmal von vorn. Ich will einen DCEL haben eines Voronoi-Diagramms
+haben. DCEL besteht aus Faces, Halfedges und Vertices. Es gibt ein Face pro Site ->
+bei einem Site Event kann ich eine Face erzeugen. Wenn es mehr als eine Site
+gibt, gibt es mind. eine Kante. Die entspricht einer Voronoigrenze. Wenn sich
+die Parabeln zweier Sites a und b schneiden, dann liegt die Voronoigrenze auf
+der Gerade, die durch die zwei Schnittpunkte festgelegt ist. D.h. wenn ich die
+Steigung (Orientierung der Kante) wissen will, kann ich die mittels dieser
+Schnittpunkte berechnen.
 
-Was ist denn noch unklar?
-Ein Face hat einen Pointer auf eine Kante. Das Face erzeuge ich für jede Site. Wenn ich eine Kante zu einer Site finde, setze ich eben diese in das Face. Scheint einfach.
+Was ist denn noch unklar? Ein Face hat einen Pointer auf eine Kante. Das Face
+erzeuge ich für jede Site. Wenn ich eine Kante zu einer Site finde, setze ich
+eben diese in das Face. Scheint einfach.
 
-Circle Event ist das dunkelste Thema. Immer noch.
-Eigentlich ist das einfach: Man sortiert die Site in die Beachline ein (das funktioniert möglicherweise noch nicht so gut). Der linke Brechpunkt und der rechte Brechpunkt verweisen evtl. auf die Sites, die man braucht, um den Kreis zu berechnen. Jeder der Brechpunkte liegt auf einer Kante (die es schon gibt), und diese Kante schreibe ich als Referenz in den Circle Event.
-Wenn der Circle Event feuert, erzeuge ich einen Vertex. Der hat einen "leaving"-Pointer, den setze ich auf eine Halfedge, und zwar die aus dem Circle Event!
+Circle Event ist das dunkelste Thema. Immer noch. Eigentlich ist das einfach:
+Man sortiert die Site in die Beachline ein (das funktioniert möglicherweise noch
+nicht so gut). Der linke Brechpunkt und der rechte Brechpunkt verweisen evtl.
+auf die Sites, die man braucht, um den Kreis zu berechnen. Jeder der Brechpunkte
+liegt auf einer Kante (die es schon gibt), und diese Kante schreibe ich als
+Referenz in den Circle Event. Wenn der Circle Event feuert, erzeuge ich einen
+Vertex. Der hat einen "leaving"-Pointer, den setze ich auf eine Halfedge, und
+zwar die aus dem Circle Event!
 
-Bei der Halfedge fehlen noch der twin und next.
-Twin ist die Halfedge in die andere Richtung. Jede Halfedge hat einen Twin, den kann ich also bei jedem Site Event erzeugen. Der origin ist erstmal ...
-Next enthält den Pointer auf die nächste Halfedge gegen den Uhrzeigersinn um das Gesicht herum. Wie finde ich diese Dinger?
-Und den Origin.
-Ich finde zuerst Halfedges, und bis zur (frühestens) dritten Site gibt es keinen Knoten. Wenn es einen Knoten gibt, dann kann ich "origin" setzen. Aber wessen Origin?
+Bei der Halfedge fehlen noch der twin und next. Twin ist die Halfedge in die
+andere Richtung. Jede Halfedge hat einen Twin, den kann ich also bei jedem Site
+Event erzeugen. Der origin ist erstmal ... Next enthält den Pointer auf die
+nächste Halfedge gegen den Uhrzeigersinn um das Gesicht herum. Wie finde ich
+diese Dinger? Und den Origin. Ich finde zuerst Halfedges, und bis zur
+(frühestens) dritten Site gibt es keinen Knoten. Wenn es einen Knoten gibt, dann
+kann ich "origin" setzen. Aber wessen Origin?
 
-17.4.20017:
-Weiter: Wenn ich eine Site einsortiere, wird meist nur eine Parabel gebrochen, d.h. ich habe dieselbe Site links und rechts. Aber wenn ich dann noch einen Brechpunkt weiter gehe, muss es sich um eine andere Site handeln. Das sollte einen Circle Event geben.
-Was ist mit dem Schlüssel? Wie speichere ich die DCEL? Ass. Array bzw. Objekt mit cleveren Schlüsseln? Erstmal mit Pointern!
-Wie finde ich die Kette von Halfedges um ein Face herum?
-Geg. ein Brechpunkt, der liegt zwischen zwei Gesichtern.
+17.4.20017: Weiter: Wenn ich eine Site einsortiere, wird meist nur eine Parabel
+gebrochen, d.h. ich habe dieselbe Site links und rechts. Aber wenn ich dann noch
+einen Brechpunkt weiter gehe, muss es sich um eine andere Site handeln. Das
+sollte einen Circle Event geben. Was ist mit dem Schlüssel? Wie speichere ich
+die DCEL? Ass. Array bzw. Objekt mit cleveren Schlüsseln? Erstmal mit Pointern!
+Wie finde ich die Kette von Halfedges um ein Face herum? Geg. ein Brechpunkt,
+der liegt zwischen zwei Gesichtern.
 
-Wenn es nur zwei Sites gibt, gibt es nur zwei HEs, die eine verweist auf Face 1 die andere auf Face 2, next ist null, origin ist null. Ist das die unbegrenzte Zelle?
+Wenn es nur zwei Sites gibt, gibt es nur zwei HEs, die eine verweist auf Face 1
+die andere auf Face 2, next ist null, origin ist null. Ist das die unbegrenzte
+Zelle?
 
-18.4.2017:
-Wie finde ich nebeneinander liegende Sites, also die Sites für einen Circle Event?
-Angenommen, man hat die drei Sites die man braucht. Dann berechnet man den Mittelpunkt des durch die drei Punkte festgelegten Kreises, und dessen Radius. Wenn die Sweepline den untersten Rand erreicht, bedeutet das, dass sich die zwei Voronoigrenzen zu den drei Sites getroffen haben. Und das Face zu der mittleren Site ist fertig.
-Diese Worte links und rechts und mittel sind zu ungenau.
-Wenn ich drei Sites habe, kann ich einen Kreis berechnen (siehe oben). Auf diesem Kreis kann ich eine Site auswählen, dann gibt es eine weitere in Richtung gegen den Uhrzeigersinn, und eine Site in Richtung des Uhrzeigersinns (da kann man gemäß lexikographischer Ordnung der Koordinaten auswählen, d.h. auch die älteste Site ist die "mittlere").
-Wenn ein Circle-Event passiert, dann wird die mittlere Region abgeschlossen. 
+18.4.2017: Wie finde ich nebeneinander liegende Sites, also die Sites für einen
+Circle Event? Angenommen, man hat die drei Sites die man braucht. Dann berechnet
+man den Mittelpunkt des durch die drei Punkte festgelegten Kreises, und dessen
+Radius. Wenn die Sweepline den untersten Rand erreicht, bedeutet das, dass sich
+die zwei Voronoigrenzen zu den drei Sites getroffen haben. Und das Face zu der
+mittleren Site ist fertig. Diese Worte links und rechts und mittel sind zu
+ungenau. Wenn ich drei Sites habe, kann ich einen Kreis berechnen (siehe oben).
+Auf diesem Kreis kann ich eine Site auswählen, dann gibt es eine weitere in
+Richtung gegen den Uhrzeigersinn, und eine Site in Richtung des Uhrzeigersinns
+(da kann man gemäß lexikographischer Ordnung der Koordinaten auswählen, d.h.
+auch die älteste Site ist die "mittlere"). Wenn ein Circle-Event passiert, dann
+wird die mittlere Region abgeschlossen.
 
-In meiner Beachline enthalten die Knoten die Sites. Die Kanten im Baum bedeuten die Brechpunkte. Wenn eine neue Site kommt, berechne ich den Brechpunkt zwischen neuer Site und aktuellem Knoten.
-Habe ich überhaupt verstanden, was ich hier tue?
+In meiner Beachline enthalten die Knoten die Sites. Die Kanten im Baum bedeuten
+die Brechpunkte. Wenn eine neue Site kommt, berechne ich den Brechpunkt zwischen
+neuer Site und aktuellem Knoten. Habe ich überhaupt verstanden, was ich hier
+tue?
 
-Grundsätzlich ist es so, das eine neue Site nur einen Brechpunkt erzeugt, weil die Parabel zu einer vertikalen Linie degeneriert, wenn der Fokus aus der Direktrix (Sweepline) liegt. D.h. ich muss nur einen Beachline-Abschnitt suchen, der direkt vertikal über der neuen Site liegt.
-Ich habe also mehr oder weniger eine x-Koordinate. Ich berechne den ersten Brechpunkt, wenn x links davon liegt weiter im linken Subbaum, sonst im rechten. Wenn der Subbaum nicht da ist, füge ein neues Kind ein. Dann hoffen, dass der AVL-Baum funktioniert.
+Grundsätzlich ist es so, das eine neue Site nur einen Brechpunkt erzeugt, weil
+die Parabel zu einer vertikalen Linie degeneriert, wenn der Fokus aus der
+Direktrix (Sweepline) liegt. D.h. ich muss nur einen Beachline-Abschnitt suchen,
+der direkt vertikal über der neuen Site liegt. Ich habe also mehr oder weniger
+eine x-Koordinate. Ich berechne den ersten Brechpunkt, wenn x links davon liegt
+weiter im linken Subbaum, sonst im rechten. Wenn der Subbaum nicht da ist, füge
+ein neues Kind ein. Dann hoffen, dass der AVL-Baum funktioniert.
 
+29.4.2017: Habe eine doppelt verlinkte Liste für die Beachlinesegment eingebaut.
+Jetzt sollte es leicht sein, die Circle Events zu erzeugen.
 
-29.4.2017:
-HAbeeine doppelt verlinkte Liste für die Beachlinesegment eingebaut. Jetzt sollte es leicht sein, die Circle Events zu erzeugen.
+Beispiele Beachline: a <-> b <-> a a <-> b <-> a <-> c <-> a a <-> b <-> d <-> b <->
+a <-> c <-> a
 
-Auswählen die sites.
-Beispiele Beachline:
-a <-> b <-> a
-a <-> b <-> a <-> c <-> a
-a <-> b <-> d <-> b <-> a <-> c <-> a
-
-Also, wenn ein Knoten einsortiert wird, dann erzeuge ich einen Circleevent fpr node.prev und node.next, falls möglich.
+Also, wenn ein Knoten einsortiert wird, dann erzeuge ich einen Circleevent fpr
+node.prev und node.next, falls möglich.
 
 Der Event soll feuern, wenn sweepy == event.y + event.r. Tut er jetzt auch.
 
-Jetzt muss noch klar werden, was passiert, wenn er feuert.
-Semantisch soll.
-- ein Beachlinesegment gelöscht werden (d.h. ein Knoten im Baum und ein Bls in der doppelt verketteten Liste)
-- eine Knoten erzeugt werden
-- vorhandene Halfedges müssen upgedatet werden ( wie )
-- Evtl. muss eine ( mehrere ? ) Halfedge erzeugt werden ( Habe ich noch nicht verstanden )
+Jetzt muss noch klar werden, was passiert, wenn er feuert. Semantisch soll - ein
+Beachlinesegment gelöscht werden (d.h. ein Knoten im Baum und ein Bls in der
+doppelt verketteten Liste) - ein Knoten erzeugt werden - vorhandene Halfedges
+müssen upgedatet werden ( wie ? ) - Evtl. muss / müssen eine ( mehrere ? )
+Halfedge(s) erzeugt werden ( Habe ich noch nicht verstanden )
 
-Zuerst den Knoten löschen. Fragen:
-- Welchen ? Der, der in der Referenz steht ? Duh! Aber ist das der richtige ? Das ist noch eine dunkle Wolke.
-Wenn der Circle Event feuert, verschwindet ein BLS. Das BLS wird repräsentiert durch einen Knoten und zwei Verbindungen.
+Zuerst den Knoten löschen. Fragen: - Welchen ? Der, der in der Referenz steht ?
+Duh! Aber ist das der richtige ? Das ist noch eine dunkle Wolke. Wenn der Circle
+Event feuert, verschwindet ein BLS. Das BLS wird repräsentiert durch einen
+Knoten und zwei Verbindungen.
 
+25.5.2017: Lange nichts geschrieben. Avl-Tree ist debugged, funktioniert im
+Moment ganz gut. Jetziges Problem sind Circle-Events. Nämlich das Verständnis
+derselben. Ein Circleevent weist auf einen Punkt, der gleichweit entfernt ist
+von drei Sites. Er feuert, wenn die Sweepline den Radius tangiert. D.h. am
+Mittelpunkt des Kreises ist ein Voronoiknoten gefunden worden, an dem mindestens
+drei Voronoikanten zusammentreffen. Jetzt muss man löschen: - ein
+Beachlinesegment - ...
+
+2.6.2017:
+-----
+Ich habe eine BitSet-DS implementiert, bestimmt die
+1000000te. Aber schön war's. Ich weiß nicht mal, ob ich es brauche.
+
+Hintergrund sind die Circle events. Es kann zu Sites A,B und C mehrere Events
+geben, jedenfalls so, wie ich das jetzt implementiert  habe. Zwei Circle Events
+sind gleich, wenn sie dieselben Sites enthalten. Jedenfalls sehr gleich, denn
+sie zünden zum selben Zeitpunkt. Also zum Beispiel c1:(A,B,C) und c2:(B,C,A).
+Aber c1 würde ein Beachlinesegment zu Site B löschen, während c2 ein
+Beachlinesegment zu Site C löschen würde (sozusagen). Ich will aber nur das
+Beachlinesegment zu Site B löschen.
+
+In den Dokumenten, die ich lese, steht, das man eine Circle-Events gelegentlich
+löschen muss, dazu muss ich sie aber erst kennen. Deswegen gibt es allerlei
+Zeiger in den Nodes.
+
+Nochmal von vorne: Circle Events entstehen bei der Bearbeitung von Site Events.
+Ein neuer Site Event bricht ein Beachlinesegment auf. Wenn man also z.B. eine
+Beachline (p<sub>1</sub>, p<sub>2</sub>, p<sub>3</sub>) hat, so entsteht
+vielleicht (p<sub>1</sub>, p<sub>new</sub>', p<sub>2</sub>, p<sub>new</sub>'',
+p<sub>3</sub>). Jetzt erzeugt man neue Circle Events zu (p<sub>1</sub>,
+p<sub>new</sub>', p<sub>2</sub>) und (p<sub>2</sub>, p<sub>new</sub>'',
+p<sub>3</sub>). Jeder Circle Event zum Tripel (p<sub>1</sub>, p<sub>2</sub>,
+p<sub>3</sub>) wird gelöscht.
+
+3.6.2017:
+-------
+
+Fortsetzung: Beachte, dass es keinen neuen Circle Event (p<sub>new</sub>',
+p<sub>2</sub>, p<sub>new</sub>'') gibt. Es müssen drei verschiedene Sites sein.
+
+Feuert nun ein Circle Event (mit Sites 1,2,3), so bedeutet das, dass ein Vertex
+gefunden wurde (Im Zentrum des Kreises, der durch diese drei Sites definiert
+wird). Zwei Edges verschwinden (zwischen 1 und 2 und zwischen 2 und 3), und eine
+neue Edge entsteht (zwischen 1 und 3).
+
+Alle Circle Events mit den Sites 1,2 und 3 müssen gelöscht werden, sonst ergäben
+sie den selben Vertex wieder (weil der Kreis eindeutig ist).
+
+4.6.2017:
+------
+
+Es kann sechs Events zu einer Menge von drei Sites geben, wg. 3! Permutationen
+(aber ich glaube nicht das alle Permutationenentstehen können). Aber alle
+beschreiben denselben Vertex. D.h. wenn einer der Events aufgetreten ist, kann
+nie wieder einer zu dieser Menge passieren. Deswegen werden die noch vorhandenen
+Events zu diesem Tripel gelöscht. Dazu muss man sie kennen und erkennen.
+
+11.06.2017:
+------
+
+Außerdem veschwinden die Events, die das gelöschte Beachlinesegment enthalten.
+Wenn ich also einen Circle Event bearbeite, dann lösche ich ein
+Beachlinesegment. Das enthält eine Liste mit den Events, die es enthalten.
+
+Dann kann man das ja einfach alles löschen.
+
+Also wo ist das Problem ?

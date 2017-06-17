@@ -7,12 +7,23 @@ function safeHeight(node) {
 	return (node == undefined) ? -1 : node.height;
 }
 
-let defaultprocess = function(newval, rel) { return new AvlTreeNode(newval, this, this.comparator, this.process); }
+// process this node
+// rel == -1 => value < this.value
+// rel == 1 => value > this.value
+// rel == 0 => value == this.value
+let defaultprocess = function(newval, rel) {
+	if (rel < 0) {
+		this.left  = new AvlTreeNode(newval, this, this.comparator, this.process);
+	} if (rel > 0) {
+		this.right = new AvlTreeNode(newval, this, this.comparator, this.process);
+	} else {
+		// ignore ?
+	}
+}
 
-let AvlTreeNode = function(value,
-	parent,
+let AvlTreeNode = function(value,	parent = undefined,
 	comparator = function(a) {
-		return a - this.value
+		return a - this.value;
 	},
   proc = defaultprocess ) {
 	this.value   = value;
@@ -24,6 +35,10 @@ let AvlTreeNode = function(value,
 	this.height  = 0;
   this.a_id    = avl_node_id;
   avl_node_id  += 1;
+}
+
+if (typeof module !== 'undefined'){
+	module.exports = AvlTreeNode;
 }
 
 AvlTreeNode.prototype.balfac = function() {
@@ -133,12 +148,23 @@ AvlTreeNode.prototype.removeLeftmost = function() {
   return curr;
 }
 
+// insert
 AvlTreeNode.prototype.insert = function(newval) {
   let cv = this.comp(newval);
 	if (cv < 0) {
-		this.left  = this.left  ? this.left.insert(newval) : this.process(newval, -1);
-	} else if (cv >= 0) {
-		this.right = this.right ? this.right.insert(newval) : this.process(newval, 1);
+		if (this.left) {
+			this.left.insert(newval);
+		} else {
+			this.process(newval, -1);
+		}
+	} else if (cv > 0) {
+		if (this.right) {
+			this.right.insert(newval);
+		} else {
+			this.process(newval, 1);
+		}
+	} else if (cv == 0) {
+		this.process(newval, 0);
 	}
 	this.height  = this.calcHeight();
 	let retval   = this.balance();
@@ -346,9 +372,4 @@ function drawLineOnCanvas(p1, p2, col) {
 	ctx.moveTo(p1.x, p1.y);
 	ctx.lineTo(p2.x, p2.y);
 	ctx.stroke();
-}
-
-if (typeof module !== 'undefined'){
-	console.log("in node");
-	module.exports = AvlTreeNode;
 }

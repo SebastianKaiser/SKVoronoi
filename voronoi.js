@@ -5,7 +5,7 @@ const SIZE_CANVAS_X = 600;
 const SIZE_CANVAS_Y = 600;
 const HALFX = SIZE_CANVAS_X / 2;
 const HALFY = SIZE_CANVAS_Y / 2;
-const NO_SITES = 1 << 3;
+const NO_SITES = 1 << 2;
 
 /**
 	Initializsation of stuff
@@ -36,7 +36,10 @@ let tdir   = SIZE_CANVAS_X / 2 + 120;
 let bpt 		= undefined;
 // pointer to list of beach line segments
 let blsFirst = undefined;
-let sweepy  = 0;
+let sweepy = 0;
+let siteIdCounter 					= 0;
+let circleIdCounter 				= 0;
+let beachlineSegmentCounter = 0;
 
 document.getElementById("back").onclick = function() {
 	a -= 0.05;
@@ -79,6 +82,7 @@ function init() {
 Data structures
 */
 let Site = function(point) {
+	this.id = siteIdCounter++;
 	this.x = point.x;
 	this.y = point.y;
 }
@@ -93,20 +97,23 @@ Site.prototype.equals = function(other) {
 
 // Circle event. y contains the y coordinate, where this event is supposed to fire,
 // meaning this.y == point.x + radius.
-let CircleEvent = function(point, radius, ref) {
-	this.p = point;
-	this.x   = point.x;
-	this.y   = point.y + radius;
-	this.r 	 = radius;
-	this.ref = ref;
+let CircleEvent = function(point, radius, refp, ref, refn) {
+	this.id   = circleIdCounter++;
+	this.deleted = false;
+	this.p    = point;
+	this.x    = point.x;
+	this.y    = point.y + radius;
+	this.r 	  = radius;
+	this.ref  = ref;
+	this.siteSet = new BitSet();
 }
 
 CircleEvent.prototype.toString = function() {
-	return `(${this.x}, ${this.y}) ${this.r} ${this.ref}`
+	return `(${this.x}, ${this.y}) ${this.r} ${this.refp} ${this.ref} ${this.refn}`
 }
 
-CircleEvent.prototype.draw = function() {
-	drawCircle(this.p.x, this.p.y, this.r, "blue");
+CircleEvent.prototype.draw = function(color = "blue") {
+	drawCircle(this.p.x, this.p.y, this.r, color);
 	drawPoint({x: this.x, y:this.y}, "green", 3);
 }
 
@@ -144,11 +151,18 @@ DegenParabolaAhk.prototype.draw = function(xl, xr, color) {
 }
 
 let BeachlineSegment = function(sitepoint, refnode, prev, next) {
+	this.id  			 = beachlineSegmentCounter++;
 	this.sitepoint = sitepoint;
 	this.refnode   = refnode;
+	this.event 		 = [];
 	this.prev			 = prev;
 	this.next 		 = next;
 }
+
+BeachlineSegment.prototype.remove = function () {
+	if (this.next) this.next.prev = this.prev;
+	if (this.prev) this.prev.next = this.next;
+};
 
 let DcelVertex  = function(halfedge) {
 	this.halfedge = halfedge;
@@ -249,17 +263,28 @@ function findIntersect(site1, site2, tdir) {
 	return i;
 }
 
+function orientationClockwise(site1, site2, site3) {
+	let area = 0;
+	area += site1.x * site2.y - site1.y * site2.x
+	area += site2.x * site3.y - site2.y * site3.x
+	area += site3.x * site1.y - site3.y * site1.x
+	return area < 0;
+}
 /******************************************************
 algorithm
 */
 
-// let testsites = undefined;
+let testsites = undefined;
 // let testsites = [{x:323,y:509},{x:695,y:619},{x:610,y:635}];
 // let testsites = [{x:323,y:309},{x:495,y:419},{x:410,y:435}];
-let testsites = [{x:60,y:323},{x:393,y:374},{x:259,y:427},{x:429,y:530}];
+// let testsites = [{x:60,y:323},{x:393,y:374},{x:259,y:427},{x:429,y:530}];
+testsites = [{x:70, y:556},{x:123, y:364},{x:541, y:432},{x:387, y:419},
+	{x:225, y:490},{x:343, y:414},{x:464, y:492},{x:522, y:339}]
+
 
 function initAlgorithm() {
 	bpt = undefined;
+	circleIdCounter = 0;
 	circleList = [];
 	pqueue.clear();
 	firstBls = undefined;
@@ -275,6 +300,7 @@ function initAlgorithm() {
 													   y: Math.round( Math.random() * HALFY) + HALFY } );
 			pqueue.queue(sites[i]);
 		}
+		sites.forEach(s => console.log(s.toString()));
 	}
 }
 
@@ -292,7 +318,7 @@ let vcomp = function( e ) {
 	let tr = this.right ?
 		chooseRight( this.value, this.right.smallest().value, sweepy ) : Number.MAX_SAFE_INTEGER;
 	if ( e.x >  tr ) return 1; // proceed to the right
-  return 0;
+  return 0; // the beachline segment is found
 }
 
 // given to sites site1 and site2, returns the leftmost intersection point (wrt the x-axis) of the
@@ -313,12 +339,12 @@ function chooseRight( site1, site2 ) {
 // this breaks up this into three nodes, left and right contain the same value
 // as this, the new root contains the new value
 let insertProcess = function( value, rel ) {
-
 	// left subtree
 	let nl 		  = new AvlTreeNode( this.value, this, vcomp, insertProcess );
 	nl.left     = this.left;
 	this.left   = nl;
 	nl.bls 			= new BeachlineSegment( this.value, nl, this.bls.prev, undefined );
+
 	// store the leftest bls
 	if(this.bls.prev) {
 		this.bls.prev.next = nl.bls;
@@ -339,29 +365,49 @@ let insertProcess = function( value, rel ) {
 	this.value  = value;
 	this.height = this.calcHeight();
 
-	let newbls  = new BeachlineSegment( value, this, nl.bls, nr.bls );
-	this.bls 		= newbls;
-	nl.bls.next = nr.bls.prev = newbls;
-	createCircleEvent(newbls.prev);
-	createCircleEvent(newbls.next);
+	this.bls 		= new BeachlineSegment( value, this, nl.bls, nr.bls );
+	nl.bls.next = nr.bls.prev = this.bls;
+	queueNewCircleEvent(this.bls.prev);
+	queueNewCircleEvent(this.bls.next);
 }
 
-function createCircleEvent( bls ) {
+// create and enqueue
+function queueNewCircleEvent( bls ) {
+	// collect all the sites
+	if ( !bls.prev || !bls.next ) return;
+	let bs  = new BitSet();
 	let p1  = bls.sitepoint;
-	if ( !bls.prev ) return;
+	bs.insert(p1.id);
 	let p2  = bls.prev.sitepoint;
-	if ( !bls.next ) return;
+	bs.insert(p2.id);
 	let p3  = bls.next.sitepoint;
-	if( p2.equals(p3) ) return;
+	bs.insert(p3.id);
+	// must be three different sites
+	if( bs.size() != 3 ) return;
+
+	if(!orientationClockwise(p1,p2,p3)) return; // false alarn
+
+	// calc the point where this fires
 	let cv  = circumVector(p1,p2,p3);
-	let nce = new CircleEvent(cv.p, cv.r, bls.refnode);
+	// create and register with
+	let nce = new CircleEvent(cv.p, cv.r, bls.prev, bls, bls.next);
+	bls.prev.event.push(nce);
+	bls.event.push(nce);
+	bls.next.event.push(nce);
 	nce.draw();
+
+	// enqueue
 	pqueue.queue(nce);
+	return nce;
 }
 
 let graph = undefined;
 
-function calcVoronoi(e, bptree) {
+function calcVoronoi(bptree) {
+	let e = pqueue.dequeue();
+	if (e.deleted) {
+		return bptree;
+	}
 	sweepy = e.y;
 	drawPoint(e, "blue", 5);
 	if( e instanceof Site ) {
@@ -371,12 +417,13 @@ function calcVoronoi(e, bptree) {
 		} else {
 			bptree     = bptree.insert(e);
 		}
-		// graph(e) = e;
-		// wenn breakpoint, woher
 	} else if (e instanceof CircleEvent) {
-		e.draw();
-		console.log(e.ref)
-		e.ref.removeNode();
+		let currBls = e.ref;
+		currBls.event.forEach( ev => ev.deleted = true );
+		currBls.remove();
+		e.ref.refnode.removeNode();
+		// queueNewCircleEvent(e.refn);
+		// queueNewCircleEvent(e.refp);
 	}
 	return bptree;
 }
@@ -390,14 +437,11 @@ function drawAnimation() {
 	if (pqueue.length == 0) {
 		initAlgorithm();
 	}
-	//  parabolaResearch2();
 	drawVoronoi();
 }
 
 function drawVoronoi() {
-  let e = pqueue.dequeue();
-	undoList.push(e);
-	bpt = calcVoronoi(e, bpt);
+	bpt = calcVoronoi(bpt);
 	drawTree(bpt, {x: 300, y: 50}, 150 );
 	drawBeachline();
 	sites.forEach( c => {

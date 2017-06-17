@@ -1,0 +1,4 @@
+line 394: if(e.deleted) .. doesn't work as expected. Attribute set the wrong
+way?
+
+avl-tree is not balanced?
