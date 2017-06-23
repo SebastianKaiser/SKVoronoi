@@ -5,7 +5,7 @@ const SIZE_CANVAS_X = 600;
 const SIZE_CANVAS_Y = 600;
 const HALFX = SIZE_CANVAS_X / 2;
 const HALFY = SIZE_CANVAS_Y / 2;
-const NO_SITES = 1 << 2;
+const NO_SITES = 1 << 3;
 
 /**
 	Initializsation of stuff
@@ -278,8 +278,8 @@ let testsites = undefined;
 // let testsites = [{x:323,y:509},{x:695,y:619},{x:610,y:635}];
 // let testsites = [{x:323,y:309},{x:495,y:419},{x:410,y:435}];
 // let testsites = [{x:60,y:323},{x:393,y:374},{x:259,y:427},{x:429,y:530}];
-testsites = [{x:70, y:556},{x:123, y:364},{x:541, y:432},{x:387, y:419},
-	{x:225, y:490},{x:343, y:414},{x:464, y:492},{x:522, y:339}]
+//testsites = [{x:70, y:556},{x:123, y:364},{x:541, y:432},{x:387, y:419},
+//		{x:225, y:490},{x:343, y:414},{x:464, y:492},{x:522, y:339}]
 
 
 function initAlgorithm() {

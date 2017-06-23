@@ -46,7 +46,9 @@ AvlTreeNode.prototype.balfac = function() {
 }
 
 AvlTreeNode.prototype.calcHeight = function() {
-	return Math.max(safeHeight(this.left), safeHeight(this.right)) + 1
+	let retval  = Math.max(safeHeight(this.left), safeHeight(this.right)) + 1;
+	this.height = retval;
+	return retval;
 }
 
 AvlTreeNode.prototype.balanceLeft = function() {
@@ -79,8 +81,8 @@ AvlTreeNode.prototype.balanceRight = function() {
 	return retval;
 }
 
-// balance this subtree, return the new root
-AvlTreeNode.prototype.balance = function() {
+// balance this subtree after am insert, return the new root
+AvlTreeNode.prototype.balanceInsert = function() {
 	let retval = this;
 	if (this.balfac() > 1) {
 		retval = this.balanceLeft();
@@ -100,8 +102,8 @@ AvlTreeNode.prototype.rotateRight = function() {
 	this.left 		= newTop.right;
 	if(this.left) this.left.parent = this;
 	newTop.right 	= this;
-	this.height 	= this.calcHeight();
-	newTop.height = newTop.calcHeight();
+	this.calcHeight();
+	newTop.calcHeight();
 	return newTop;
 }
 
@@ -115,8 +117,8 @@ AvlTreeNode.prototype.rotateLeft = function() {
 	this.right 		= newTop.left;
 	if(this.right) this.right.parent = this;
 	newTop.left 	= this;
-	this.height 	= this.calcHeight();
-	newTop.height = newTop.calcHeight();
+	this.calcHeight();
+	newTop.calcHeight();
 	return newTop;
 }
 
@@ -138,13 +140,13 @@ AvlTreeNode.prototype.removeLeftmost = function() {
   let curr = this.smallest();
   if (curr == this) {
     if( this.right ) this.right.parent = this.parent; // undefined incl.
-    this.replaceInParentWith(this.right);
+    this.handleParent(this.right);
   } else {
     curr.parent.left = curr.right; // might be undefined
     if (curr.right) curr.right.parent = curr.parent;
-    curr.parent.height = curr.parent.calcHeight();
   }
 	curr.right = undefined;
+	curr.parent.updateHeight();
   return curr;
 }
 
@@ -166,8 +168,8 @@ AvlTreeNode.prototype.insert = function(newval) {
 	} else if (cv == 0) {
 		this.process(newval, 0);
 	}
-	this.height  = this.calcHeight();
-	let retval   = this.balance();
+	this.calcHeight();
+	let retval   = this.balanceInsert();
 	return retval;
 }
 
@@ -200,48 +202,58 @@ AvlTreeNode.prototype.removeNode = function() {
 		newNode = this.right;
 	}	else {
 		// replace with leftmostest node of the right subtree
-		newNode = this.right.removeLeftmost();
+		newNode       = this.right.removeLeftmost();
 		newNode.right = this.right;
 		newNode.left  = this.left;
-		if (newNode.left)  newNode.left.parent = newNode;
+		if (newNode.left)  newNode.left.parent  = newNode;
 		if (newNode.right) newNode.right.parent = newNode;
   }
-  this.replaceInParentWith(newNode);
+	// rebalance newNode and point newNode to new parent
+	if( newNode ) {
+		newNode.parent = this.parent; // can be undefined
+		newNode.calcHeight();
+		this.handleParent(newNode);
+		if (this.parent) this.parent.updateHeight();
+		newNode	= newNode.balanceNodeDelete();
+	} else {
+		this.handleParent(undefined);
+		if (this.parent) this.parent.updateHeight();
+	}
 	return newNode;
 }
 
-// replace this in parent by newNode, might be undefined
-AvlTreeNode.prototype.replaceInParentWith = function(newNode) {
-  if( this.parent && this == this.parent.left ) {
-		this.parent.left = newNode;
-	} else if( this.parent && this == this.parent.right) {
-		this.parent.right = newNode;
-	}
-  // point newNode to new parent
-	if( newNode ) {
-		newNode.parent  = this.parent; // can be undefined
+AvlTreeNode.prototype.updateHeight = function() {
+	let tmp     = this.height;
+	this.calcHeight();
+	if(this.height == tmp) {
+		return;
+	} else {
+		if(this.parent) this.parent.updateHeight();
 	}
 }
 
 AvlTreeNode.prototype.balanceNodeDelete = function() {
 	let retval = this;
 	if (!this.left && !this.right) return this;
-	if (this.balfac() < 2 && this.balfac() > -2) return this;
-	let y = (safeHeight(this.left) > safeHeight(this.right)) ?
-		this.left : this.right;
-	let x = (safeHeight(y.left) > safeHeight(y.right)) ?
-		y.left : y.right;
-	if (y == this.left && x == y.left) {
-		retval = this.rotateRight();
-	} else if (y == this.left && x == y.right) {
-		this.left = y.rotateLeft()
-		retval = this.rotateRight();
-	} else if (y == this.right && x == y.right) {
-		retval = this.rotateLeft();
-	} else if (y == this.right && x == y.left) {
-		this.right = y.rotateRight()
-		retval = this.rotateLeft();
+	// if (this.balfac() < 2 && this.balfac() > -2) return this;
+	if (this.balfac() >=2) { // tree is skewed left
+		let y = this.left;
+		if (safeHeight(y.left) > safeHeight(y.right)) {
+			retval = this.rotateRight();
+		} else {
+			this.left = y.rotateLeft()
+			retval = this.rotateRight();
+		}
+	} else if(this.balfac() <= -2) { // tree is skewed right
+		let y = this.right;
+		if (safeHeight(y.left) < safeHeight(y.right)) {
+			retval = this.rotateLeft();
+		} else {
+			this.right = y.rotateRight()
+			retval = this.rotateLeft();
+		}
 	}
+	retval.updateHeight();
 	return retval;
 }
 

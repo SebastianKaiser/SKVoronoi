@@ -3,7 +3,7 @@ const SIZE_CANVAS_Y = 800;
 
 let ctx = undefined;
 
-let size        = 1 << 6;
+let size        = 1 << 5;
 let at          = undefined;
 let insertnodes = 1;
 let deletenodes = 1;
@@ -52,11 +52,11 @@ function init() {
 graphics
 */
 function drawAnimation() {
-  ctx.fillStyle = "white";
-  ctx.fillRect(0, 0, SIZE_CANVAS_X, SIZE_CANVAS_Y);
   if (insertnodes < values.length) {
     $('#info').text(`inserting ${values[insertnodes]}`);
     at = at.insert( values[insertnodes] );
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, SIZE_CANVAS_X, SIZE_CANVAS_Y);
     drawTree(at, {x: 300, y: 30}, 150 );
     at.testSanity()
     insertnodes += 1;
@@ -64,6 +64,8 @@ function drawAnimation() {
   } else if (insertnodes == values.length && deletenodes < values.length - 1) {
     $('#info').text(`deleting ${values[deletenodes]}`);
     at = at.deleteValue(values[deletenodes]);
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, 0, SIZE_CANVAS_X, SIZE_CANVAS_Y);
     drawTree(at, {x: 300, y: 30}, 150 );
     at.testSanity()
     deletenodes += 1;
@@ -87,6 +89,10 @@ function createValues() {
   // values = [974, 685, 896, 774, 348, 681, 927, 512]
   // values = [578, 430, 715, 846, 118, 17, 317, 506]
   // values = [570, 483, 795, 321, 405, 886, 419, 920]
+  // values = [87, 557, 291, 5, 211, 554, 892, 266, 757, 766, 60, 257, 86, 985, 34, 101];
+  // values = [788, 467, 238, 977, 96, 206, 519, 354, 812, 621, 771, 100, 469, 385, 963, 506];
+  // values = [867, 869, 657, 703, 512, 198, 684, 574, 652, 268, 53, 897, 580, 180, 992, 339];
+  // values = [74, 439, 493, 307, 564, 762, 588, 51, 131, 993, 460, 657, 647, 727, 236, 503]
   let keys = [];
 	let MAX_VAL = 1000;
   if ( values.length == 0 ) {
@@ -101,7 +107,7 @@ function createValues() {
   at = new AvlTreeNode(values[0]);
   insertnodes = 1;
   deletenodes = 0;
-	console.log(values);
+	// console.log(values);
 }
 
 function depthTest(node) {
