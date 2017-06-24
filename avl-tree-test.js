@@ -3,7 +3,7 @@ const SIZE_CANVAS_Y = 800;
 
 let ctx = undefined;
 
-let size        = 1 << 5;
+let size        = 1 << 4;
 let at          = undefined;
 let insertnodes = 1;
 let deletenodes = 1;
@@ -93,6 +93,7 @@ function createValues() {
   // values = [788, 467, 238, 977, 96, 206, 519, 354, 812, 621, 771, 100, 469, 385, 963, 506];
   // values = [867, 869, 657, 703, 512, 198, 684, 574, 652, 268, 53, 897, 580, 180, 992, 339];
   // values = [74, 439, 493, 307, 564, 762, 588, 51, 131, 993, 460, 657, 647, 727, 236, 503]
+  values = [27, 720, 258, 276, 543, 81, 864, 347, 722, 889, 383, 65, 382, 551, 461, 758]; 
   let keys = [];
 	let MAX_VAL = 1000;
   if ( values.length == 0 ) {
@@ -104,6 +105,7 @@ function createValues() {
     	keys[values[i]] = true;
   	}
   }
+  console.log(values);
   at = new AvlTreeNode(values[0]);
   insertnodes = 1;
   deletenodes = 0;

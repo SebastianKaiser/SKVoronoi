@@ -169,8 +169,7 @@ AvlTreeNode.prototype.insert = function(newval) {
 		this.process(newval, 0);
 	}
 	this.calcHeight();
-	let retval   = this.balanceInsert();
-	return retval;
+	return this.balanceInsert();
 }
 
 AvlTreeNode.prototype.deleteNode = function(toDelete) {
@@ -203,7 +202,7 @@ AvlTreeNode.prototype.removeNode = function() {
 	}	else {
 		// replace with leftmostest node of the right subtree
 		newNode       = this.right.removeLeftmost();
-		newNode.right = this.right;
+		newNode.right = this.right.balanceNodeDelete();
 		newNode.left  = this.left;
 		if (newNode.left)  newNode.left.parent  = newNode;
 		if (newNode.right) newNode.right.parent = newNode;
@@ -235,23 +234,14 @@ AvlTreeNode.prototype.updateHeight = function() {
 AvlTreeNode.prototype.balanceNodeDelete = function() {
 	let retval = this;
 	if (!this.left && !this.right) return this;
-	// if (this.balfac() < 2 && this.balfac() > -2) return this;
-	if (this.balfac() >=2) { // tree is skewed left
+	if (this.balfac() >= 2) { // tree is skewed left
 		let y = this.left;
-		if (safeHeight(y.left) > safeHeight(y.right)) {
-			retval = this.rotateRight();
-		} else {
-			this.left = y.rotateLeft()
-			retval = this.rotateRight();
-		}
+		if (safeHeight(y.left) <= safeHeight(y.right)) this.left = y.rotateLeft();
+		retval = this.rotateRight();
 	} else if(this.balfac() <= -2) { // tree is skewed right
 		let y = this.right;
-		if (safeHeight(y.left) < safeHeight(y.right)) {
-			retval = this.rotateLeft();
-		} else {
-			this.right = y.rotateRight()
-			retval = this.rotateLeft();
-		}
+		if (safeHeight(y.left) >= safeHeight(y.right)) this.right = y.rotateRight();
+		retval = this.rotateLeft();
 	}
 	retval.updateHeight();
 	return retval;
@@ -341,6 +331,9 @@ AvlTreeNode.prototype.testSanity = function() {
 		if(this.right  == this.parent) {
 			throw `tantrum: parent and right child identical (wrong!)`;
 		}
+	}
+	if( Math.abs(this.balfac()) > 1 ) {
+		throw `tantrum: unbalanced`
 	}
 }
 

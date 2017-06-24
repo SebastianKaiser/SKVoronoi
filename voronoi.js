@@ -300,6 +300,7 @@ function initAlgorithm() {
 													   y: Math.round( Math.random() * HALFY) + HALFY } );
 			pqueue.queue(sites[i]);
 		}
+		console.log(sites)
 		sites.forEach(s => console.log(s.toString()));
 	}
 }
