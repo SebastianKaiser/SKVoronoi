@@ -3,7 +3,7 @@ const SIZE_CANVAS_Y = 800;
 
 let ctx = undefined;
 
-let size        = 1 << 4;
+let size        = 1 << 6;
 let at          = undefined;
 let insertnodes = 1;
 let deletenodes = 1;
@@ -63,7 +63,7 @@ function drawAnimation() {
     assert("lost a node inserting", countNodes( at, 0 ) == insertnodes );
   } else if (insertnodes == values.length && deletenodes < values.length - 1) {
     $('#info').text(`deleting ${values[deletenodes]}`);
-    at = at.deleteValue(values[deletenodes]);
+    at = at.delete(values[deletenodes]);
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, SIZE_CANVAS_X, SIZE_CANVAS_Y);
     drawTree(at, {x: 300, y: 30}, 150 );
@@ -93,7 +93,9 @@ function createValues() {
   // values = [788, 467, 238, 977, 96, 206, 519, 354, 812, 621, 771, 100, 469, 385, 963, 506];
   // values = [867, 869, 657, 703, 512, 198, 684, 574, 652, 268, 53, 897, 580, 180, 992, 339];
   // values = [74, 439, 493, 307, 564, 762, 588, 51, 131, 993, 460, 657, 647, 727, 236, 503]
-  values = [27, 720, 258, 276, 543, 81, 864, 347, 722, 889, 383, 65, 382, 551, 461, 758]; 
+  // values = [27, 720, 258, 276, 543, 81, 864, 347, 722, 889, 383, 65, 382, 551, 461, 758];
+  // values = [336, 54, 924, 880, 25, 742, 385, 647, 475, 90, 713, 734, 664, 326, 87, 622];
+  // values = [998, 720, 293, 133, 942, 283, 447, 520, 665, 710, 441, 481, 691, 966, 827, 98];
   let keys = [];
 	let MAX_VAL = 1000;
   if ( values.length == 0 ) {

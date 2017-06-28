@@ -92,6 +92,32 @@ AvlTreeNode.prototype.balanceInsert = function() {
 	return retval;
 }
 
+AvlTreeNode.prototype.balanceNodeDelete = function() {
+	let retval = this;
+	this.calcHeight();
+	if (!this.left && !this.right) return this;
+	if (this.balfac() > 1) { // tree is skewed left
+		let y = this.left;
+		if (y.balfac() <= 0) this.left = y.rotateLeft();
+		retval = this.rotateRight();
+	} else if(this.balfac() < -1) { // tree is skewed right
+		let y = this.right;
+		if (y.balfac() >= 0) this.right = y.rotateRight();
+		retval = this.rotateLeft();
+	}
+	retval.updateHeight();
+	return retval;
+}
+
+AvlTreeNode.prototype.updateHeight = function() {
+	let tmp = this.height;
+	this.calcHeight();
+	let retval = this;
+	if(this.height != tmp) {
+		if(this.parent) this.parent.updateHeight();
+	}
+}
+
 // rotate right: swap node with it's left child,
 AvlTreeNode.prototype.rotateRight = function() {
 	let newTop 		= this.left;
@@ -130,25 +156,9 @@ AvlTreeNode.prototype.handleParent = function( newTop ) {
 	} else {
 		this.parent.right = newTop
 	}
+	this.parent.updateHeight();
 }
 
-// go down left in this subtree until no lefterer child
-// can be found, then remove that node and return it
-// if this has no left child, just remove this and
-// return it. returned node has no children.
-AvlTreeNode.prototype.removeLeftmost = function() {
-  let curr = this.smallest();
-  if (curr == this) {
-    if( this.right ) this.right.parent = this.parent; // undefined incl.
-    this.handleParent(this.right);
-  } else {
-    curr.parent.left = curr.right; // might be undefined
-    if (curr.right) curr.right.parent = curr.parent;
-  }
-	curr.right = undefined;
-	curr.parent.updateHeight();
-  return curr;
-}
 
 // insert
 AvlTreeNode.prototype.insert = function(newval) {
@@ -172,20 +182,20 @@ AvlTreeNode.prototype.insert = function(newval) {
 	return this.balanceInsert();
 }
 
-AvlTreeNode.prototype.deleteNode = function(toDelete) {
-	return toDelete ? toDelete.removeNode() : undefined;
-}
-
-AvlTreeNode.prototype.deleteValue = function( value ) {
-	let toRemove = this.findNode(value);
-	if (!toRemove) return this;
-	let replacement = toRemove.removeNode();
-	if (this == toRemove) {
-		// root for this subtree is removed, return replacement
-		return replacement;
-	} else {
-		return this;
+AvlTreeNode.prototype.delete = function(value) {
+	let retval = undefined;
+	let c = this.comp(value);
+	if (c == 0) {
+		retval = this.removeNode();
+	} else if (c < 0 && this.left) {
+		this.left = this.left.delete(value);
+		retval = this;
+	} else if (c > 0 && this.right) {
+		this.right = this.right.delete(value);
+		retval = this;
 	}
+	if (retval) retval = retval.balanceNodeDelete();
+	return retval;
 }
 
 // remove node
@@ -199,52 +209,41 @@ AvlTreeNode.prototype.removeNode = function() {
 		newNode = this.left;
 	} else if (!this.left) {
 		newNode = this.right;
-	}	else {
-		// replace with leftmostest node of the right subtree
+	}	else { // left and right exist
+		// => replace with leftmostest (== smallest valuewise) node of the right subtree
 		newNode       = this.right.removeLeftmost();
-		newNode.right = this.right.balanceNodeDelete();
 		newNode.left  = this.left;
-		if (newNode.left)  newNode.left.parent  = newNode;
+		if (this.left)  this.left.parent  = newNode;
+		// we may have unbalanced the right subtree, rebalance if necessary
+		newNode.right = this.right ? this.right.balanceNodeDelete() : undefined;
 		if (newNode.right) newNode.right.parent = newNode;
   }
 	// rebalance newNode and point newNode to new parent
 	if( newNode ) {
 		newNode.parent = this.parent; // can be undefined
-		newNode.calcHeight();
 		this.handleParent(newNode);
-		if (this.parent) this.parent.updateHeight();
 		newNode	= newNode.balanceNodeDelete();
-	} else {
-		this.handleParent(undefined);
-		if (this.parent) this.parent.updateHeight();
 	}
 	return newNode;
 }
 
-AvlTreeNode.prototype.updateHeight = function() {
-	let tmp     = this.height;
-	this.calcHeight();
-	if(this.height == tmp) {
-		return;
-	} else {
-		if(this.parent) this.parent.updateHeight();
-	}
-}
-
-AvlTreeNode.prototype.balanceNodeDelete = function() {
-	let retval = this;
-	if (!this.left && !this.right) return this;
-	if (this.balfac() >= 2) { // tree is skewed left
-		let y = this.left;
-		if (safeHeight(y.left) <= safeHeight(y.right)) this.left = y.rotateLeft();
-		retval = this.rotateRight();
-	} else if(this.balfac() <= -2) { // tree is skewed right
-		let y = this.right;
-		if (safeHeight(y.left) >= safeHeight(y.right)) this.right = y.rotateRight();
-		retval = this.rotateLeft();
-	}
-	retval.updateHeight();
-	return retval;
+// go down left in this subtree until no lefterer child
+// can be found, then remove that node and return it
+// if this has no left child, just remove this and
+// return it.
+AvlTreeNode.prototype.removeLeftmost = function() {
+  let curr = this.smallest();
+  if (curr == this) { // this is already the leftmost node in this subtree
+    if( this.right ) this.right.parent = this.parent; // undefined incl.
+    this.handleParent(this.right);
+  } else { // unlink
+    curr.parent.left = curr.right; // might be undefined
+    if (curr.right) curr.right.parent = curr.parent;
+  }
+	// returned node has no children
+	curr.right = undefined;
+	curr.parent.updateHeight();
+  return curr;
 }
 
 AvlTreeNode.prototype.findNode =
