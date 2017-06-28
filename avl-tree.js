@@ -128,8 +128,7 @@ AvlTreeNode.prototype.rotateRight = function() {
 	this.left 		= newTop.right;
 	if(this.left) this.left.parent = this;
 	newTop.right 	= this;
-	this.calcHeight();
-	newTop.calcHeight();
+	this.updateHeight();
 	return newTop;
 }
 
@@ -143,8 +142,7 @@ AvlTreeNode.prototype.rotateLeft = function() {
 	this.right 		= newTop.left;
 	if(this.right) this.right.parent = this;
 	newTop.left 	= this;
-	this.calcHeight();
-	newTop.calcHeight();
+	this.updateHeight();
 	return newTop;
 }
 
@@ -222,7 +220,7 @@ AvlTreeNode.prototype.removeNode = function() {
 	if( newNode ) {
 		newNode.parent = this.parent; // can be undefined
 		this.handleParent(newNode);
-		newNode	= newNode.balanceNodeDelete();
+//		newNode	= newNode.balanceNodeDelete();
 	}
 	return newNode;
 }
