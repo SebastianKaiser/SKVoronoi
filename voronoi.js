@@ -546,15 +546,11 @@ function queueNewCircleEvent(bls) {
 	if (!bls || !bls.prev || !bls.next) {
 		return;
 	}
-	let bs = new BitSet();
 	let sp = bls.sitepoint;
-	bs.insert(sp.id);
 	let psp = bls.prev.sitepoint;
-	bs.insert(psp.id);
 	let nsp = bls.next.sitepoint;
-	bs.insert(nsp.id);
 	// must be three different sites
-	if (bs.size() != 3) {
+	if (psp.id == nsp.id || psp.id == sp.id || nsp.id == sp.id) {
 		return;
 	}
 
@@ -564,14 +560,14 @@ function queueNewCircleEvent(bls) {
 
 	// calc the point where this fires
 	let cv = circumVector(psp, sp, nsp);
-	// create and register with
+	// create and register with beach line segments
 	let nce = new CircleEvent(cv.p, cv.r, bls);
 	bls.prev.event.push(nce);
 	bls.event.push(nce);
 	bls.next.event.push(nce);
 
 	console.log(`created circle event ${nce.toString()}`);
-	cevts.push(nce);
+
 	// enqueue
 	pqueue.queue(nce);
 
@@ -600,7 +596,6 @@ function calcVoronoi(bptree) {
 			bptree = bptree.insert(e);
 		}
 	} else if (e instanceof CircleEvent) {
-		e.draw();
 		let currBls = e.ref;
 		currBls.event.forEach(ev => {
 			ev.draw("purple");
@@ -609,8 +604,8 @@ function calcVoronoi(bptree) {
 		});
 		currBls.remove();
 		e.ref.refnode.deleteNode();
-		queueNewCircleEvent(e.refn);
-		queueNewCircleEvent(e.refp);
+		queueNewCircleEvent(currBls.prev);
+		queueNewCircleEvent(currBls.next);
 	}
 	let curr = blsFirst;
 	let blsstring = ""
