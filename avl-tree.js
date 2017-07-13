@@ -13,32 +13,40 @@ function safeHeight(node) {
 // rel == 0 => value == this.value
 let defaultprocess = function(newval, rel) {
 	if (rel < 0) {
-		this.left  = new AvlTreeNode(newval, this, this.comparator, this.process);
-	} if (rel > 0) {
-		this.right = new AvlTreeNode(newval, this, this.comparator, this.process);
+		this.left = new AvlTreeNode(newval, this);
+	}
+	if (rel > 0) {
+		this.right = new AvlTreeNode(newval, this);
 	} else {
 		// ignore ?
 	}
 }
 
-let AvlTreeNode = function(value,	parent = undefined,
+let AvlTreeNode = function(value,
+	parent,
+	sanityCheck = function() {},
 	comparator = function(a) {
 		return a - this.value;
 	},
-  proc = defaultprocess ) {
-	this.value   = value;
-	this.comp    = comparator;
-  this.process = proc;
-	this.parent  = parent;
-	this.left    = undefined;
-	this.right   = undefined;
-	this.height  = 0;
-  this.a_id    = avl_node_id;
-  avl_node_id  += 1;
+	proc = defaultprocess) {
+	this.value = value;
+	this.comp = comparator;
+	this.process = proc;
+	this.parent = parent;
+	this.left = undefined;
+	this.right = undefined;
+	this.height = 0;
+	this.a_id = avl_node_id;
+	this.sanityCheck = sanityCheck;
+	avl_node_id += 1;
 }
 
-if (typeof module !== 'undefined'){
+if (typeof module !== 'undefined') {
 	module.exports = AvlTreeNode;
+}
+
+AvlTreeNode.prototype.checkSanity = function() {
+	this.sanityCheck();
 }
 
 AvlTreeNode.prototype.balfac = function() {
@@ -46,7 +54,7 @@ AvlTreeNode.prototype.balfac = function() {
 }
 
 AvlTreeNode.prototype.calcHeight = function() {
-	let retval  = Math.max(safeHeight(this.left), safeHeight(this.right)) + 1;
+	let retval = Math.max(safeHeight(this.left), safeHeight(this.right)) + 1;
 	this.height = retval;
 	return retval;
 }
@@ -55,7 +63,7 @@ AvlTreeNode.prototype.balanceLeft = function() {
 	let retval = undefined;
 	if (this.left.balfac() > 0) {
 		// left left
-		retval =  this.rotateRight()
+		retval = this.rotateRight()
 	} else if (this.left.balfac() < 0) {
 		// left right
 		this.left = this.left.rotateLeft()
@@ -84,9 +92,10 @@ AvlTreeNode.prototype.balanceRight = function() {
 // balance this subtree after am insert, return the new root
 AvlTreeNode.prototype.balanceInsert = function() {
 	let retval = this;
-	if (this.balfac() > 1) {
+	let tbalfac = this.balfac();
+	if (tbalfac > 1) {
 		retval = this.balanceLeft();
-	} else if (this.balfac() < -1) {
+	} else if (tbalfac < -1) {
 		retval = this.balanceRight();
 	}
 	return retval;
@@ -100,7 +109,7 @@ AvlTreeNode.prototype.balanceNodeDelete = function() {
 		let y = this.left;
 		if (y.balfac() <= 0) this.left = y.rotateLeft();
 		retval = this.rotateRight();
-	} else if(this.balfac() < -1) { // tree is skewed right
+	} else if (this.balfac() < -1) { // tree is skewed right
 		let y = this.right;
 		if (y.balfac() >= 0) this.right = y.rotateRight();
 		retval = this.rotateLeft();
@@ -113,42 +122,42 @@ AvlTreeNode.prototype.updateHeight = function() {
 	let tmp = this.height;
 	this.calcHeight();
 	let retval = this;
-	if(this.height != tmp) {
-		if(this.parent) this.parent.updateHeight();
+	if (this.height != tmp) {
+		if (this.parent) this.parent.updateHeight();
 	}
 }
 
 // rotate right: swap node with it's left child,
 AvlTreeNode.prototype.rotateRight = function() {
-	let newTop 		= this.left;
+	let newTop = this.left;
 	this.handleParent(newTop);
 	newTop.parent = this.parent;
-	this.parent 	= newTop;
+	this.parent = newTop;
 	// make right child of newTop left child of this
-	this.left 		= newTop.right;
-	if(this.left) this.left.parent = this;
-	newTop.right 	= this;
+	this.left = newTop.right;
+	if (this.left) this.left.parent = this;
+	newTop.right = this;
 	this.updateHeight();
 	return newTop;
 }
 
 // rotate left: swap this node (being the root of this subtree) with it's right child,
 AvlTreeNode.prototype.rotateLeft = function() {
-	let newTop 		= this.right;
+	let newTop = this.right;
 	this.handleParent(newTop);
 	newTop.parent = this.parent;
-	this.parent 	= newTop;
+	this.parent = newTop;
 	// make left child of newTop right child of this
-	this.right 		= newTop.left;
-	if(this.right) this.right.parent = this;
-	newTop.left 	= this;
+	this.right = newTop.left;
+	if (this.right) this.right.parent = this;
+	newTop.left = this;
 	this.updateHeight();
 	return newTop;
 }
 
 // handle the parent situation
-AvlTreeNode.prototype.handleParent = function( newTop ) {
-	if(!this.parent) return;
+AvlTreeNode.prototype.handleParent = function(newTop) {
+	if (!this.parent) return;
 	if (this == this.parent.left) {
 		this.parent.left = newTop;
 	} else {
@@ -160,7 +169,7 @@ AvlTreeNode.prototype.handleParent = function( newTop ) {
 
 // insert
 AvlTreeNode.prototype.insert = function(newval) {
-  let cv = this.comp(newval);
+	let cv = this.comp(newval);
 	if (cv < 0) {
 		if (this.left) {
 			this.left.insert(newval);
@@ -177,27 +186,29 @@ AvlTreeNode.prototype.insert = function(newval) {
 		this.process(newval, 0);
 	}
 	this.calcHeight();
-	return this.balanceInsert();
+	let retval = this.balanceInsert();
+	// retval.checkSanity();
+	return retval;
 }
 
 AvlTreeNode.prototype.delete = function(value) {
 	let retval = undefined;
 	let c = this.comp(value);
 	if (c == 0) {
-		retval = this.removeNode();
+		retval = this.deleteNode();
 	} else if (c < 0 && this.left) {
 		this.left = this.left.delete(value);
-		retval = this;
+		retval = this.balanceNodeDelete();
 	} else if (c > 0 && this.right) {
 		this.right = this.right.delete(value);
-		retval = this;
+		retval = this.balanceNodeDelete();
 	}
-	if (retval) retval = retval.balanceNodeDelete();
+	if (retval) retval.calcHeight();
 	return retval;
 }
 
 // remove node
-AvlTreeNode.prototype.removeNode = function() {
+AvlTreeNode.prototype.deleteNode = function() {
 	// found the desired node => delete it
 	let newNode = undefined;
 	// choose the node to replace this with
@@ -207,20 +218,20 @@ AvlTreeNode.prototype.removeNode = function() {
 		newNode = this.left;
 	} else if (!this.left) {
 		newNode = this.right;
-	}	else { // left and right exist
+	} else { // left and right exist
 		// => replace with leftmostest (== smallest valuewise) node of the right subtree
-		newNode       = this.right.removeLeftmost();
-		newNode.left  = this.left;
-		if (this.left)  this.left.parent  = newNode;
+		newNode = this.right.removeLeftmost();
+		newNode.left = this.left;
+		if (this.left) this.left.parent = newNode;
 		// we may have unbalanced the right subtree, rebalance if necessary
 		newNode.right = this.right ? this.right.balanceNodeDelete() : undefined;
 		if (newNode.right) newNode.right.parent = newNode;
-  }
+	}
 	// rebalance newNode and point newNode to new parent
-	if( newNode ) {
+	if (newNode) {
 		newNode.parent = this.parent; // can be undefined
 		this.handleParent(newNode);
-//		newNode	= newNode.balanceNodeDelete();
+		newNode = newNode.balanceNodeDelete();
 	}
 	return newNode;
 }
@@ -230,18 +241,18 @@ AvlTreeNode.prototype.removeNode = function() {
 // if this has no left child, just remove this and
 // return it.
 AvlTreeNode.prototype.removeLeftmost = function() {
-  let curr = this.smallest();
-  if (curr == this) { // this is already the leftmost node in this subtree
-    if( this.right ) this.right.parent = this.parent; // undefined incl.
-    this.handleParent(this.right);
-  } else { // unlink
-    curr.parent.left = curr.right; // might be undefined
-    if (curr.right) curr.right.parent = curr.parent;
-  }
+	let curr = this.smallest();
+	if (curr == this) { // this is already the leftmost node in this subtree
+		if (this.right) this.right.parent = this.parent; // undefined incl.
+		this.handleParent(this.right);
+	} else { // unlink
+		curr.parent.left = curr.right; // might be undefined
+		if (curr.right) curr.right.parent = curr.parent;
+	}
 	// returned node has no children
 	curr.right = undefined;
 	curr.parent.updateHeight();
-  return curr;
+	return curr;
 }
 
 AvlTreeNode.prototype.findNode =
@@ -249,9 +260,9 @@ AvlTreeNode.prototype.findNode =
 		return n
 	}) {
 		let curr = this;
-		while( curr ) {
-	    let comp = curr.comp(e);
-	    if (comp == 0) {
+		while (curr) {
+			let comp = curr.comp(e);
+			if (comp == 0) {
 				return process(e, curr);
 			} else if (curr.left && comp < 0) {
 				curr = curr.left;
@@ -266,27 +277,27 @@ AvlTreeNode.prototype.findNode =
 	}
 
 AvlTreeNode.prototype.inorder =
-  function(process = function (n) {
-      console.log(n.value);
-  }){
-    this.left && this.left.inorder(process);
-    process(this);
-    this.right && this.right.inorder(process);
-}
+	function(process = function(n) {
+		console.log(n.value);
+	}) {
+		this.left && this.left.inorder(process);
+		process(this);
+		this.right && this.right.inorder(process);
+	}
 
 AvlTreeNode.prototype.inorderValue =
-  function(process = function ( value ) {
-      console.log( value );
-  }){
-    this.left && this.left.inorderValue( process );
-    process( this.value );
-    this.right && this.right.inorderValue( process );
-}
+	function(process = function(value) {
+		console.log(value);
+	}) {
+		this.left && this.left.inorderValue(process);
+		process(this.value);
+		this.right && this.right.inorderValue(process);
+	}
 
 // find smallest element in subtree
 AvlTreeNode.prototype.smallest = function() {
 	let cursor = this;
-	while( cursor.left ) {
+	while (cursor.left) {
 		cursor = cursor.left;
 	}
 	return cursor;
@@ -295,7 +306,7 @@ AvlTreeNode.prototype.smallest = function() {
 // find biggest element in subtree
 AvlTreeNode.prototype.biggest = function() {
 	let cursor = this;
-	while( cursor.right ) {
+	while (cursor.right) {
 		cursor = cursor.right;
 	}
 	return cursor;
@@ -303,75 +314,51 @@ AvlTreeNode.prototype.biggest = function() {
 
 AvlTreeNode.prototype.root = function() {
 	let cursor = this;
-	while( cursor.parent ) {
+	while (cursor.parent) {
 		cursor = cursor.parent;
 	}
 	return cursor;
 }
 
-/*****************************************
-testing && drawing stuff
-*****************************************/
-AvlTreeNode.prototype.testSanity = function() {
-	if( this.left ) {
-		if(this  != this.left.parent) {
-			throw `tantrum: left child parent inconsistent: this ${this.value}, left parent ${this.left.parent.value}`;
-		}
-		if(this.left  == this.parent) {
-			throw `tantrum: parent and left child identical (wrong!)`;
-		}
-	}
-	if( this.right ) {
-		if(this != this.right.parent) {
-			throw `tantrum: left child parent inconsistent: this ${this.value}, right parent ${this.right.parent.value}`;
-		}
-		if(this.right  == this.parent) {
-			throw `tantrum: parent and right child identical (wrong!)`;
-		}
-	}
-	if( Math.abs(this.balfac()) > 1 ) {
-		throw `tantrum: unbalanced`
-	}
-}
 
-function drawTree(node, cp, step) {
+function drawTree(node, cp, step, canvas) {
 	if (!node) return;
 	if (cp.y > 600) {
 		return;
 	}
-	drawPoint(cp, "green", 4);
-  ctx.fillStyle = "black";
-	ctx.fillText(node.balfac(), cp.x + 10, cp.y);
-	ctx.fillText(node.height, cp.x - 10, cp.y);
-	ctx.fillText(node.value, cp.x, cp.y + 20);
+	drawPoint(cp, "green", 4, canvas);
+	canvas.fillStyle = "black";
+	canvas.fillText(node.balfac(), cp.x + 10, cp.y);
+	canvas.fillText(node.height, cp.x - 10, cp.y);
+	canvas.fillText(node.value, cp.x, cp.y + 20);
 	if (node.left) {
 		let np = {
 			x: cp.x - step,
 			y: cp.y + 30
 		};
-		drawLineOnCanvas(np, cp, "blue");
-		drawTree(node.left, np, step / 2);
+		drawLineOnCanvas(np, cp, "blue", canvas);
+		drawTree(node.left, np, step / 2, canvas);
 	}
 	if (node.right) {
 		let np = {
 			x: cp.x + step,
 			y: cp.y + 30
 		};
-		drawLineOnCanvas(np, cp, "red");
-		drawTree(node.right, np, step / 2);
+		drawLineOnCanvas(np, cp, "red", canvas);
+		drawTree(node.right, np, step / 2, canvas);
 	}
 }
 
-function drawPoint(p, col, size = 2) {
-	ctx.fillStyle = col;
-	ctx.fillRect(p.x, p.y, size, size);
+function drawPoint(p, col, size = 2, canvas) {
+	canvas.fillStyle = col;
+	canvas.fillRect(p.x, p.y, size, size);
 }
 
-function drawLineOnCanvas(p1, p2, col) {
+function drawLineOnCanvas(p1, p2, col, canvas) {
 	if (!p1 || !p2) return;
-	ctx.beginPath();
-	ctx.strokeStyle = col;
-	ctx.moveTo(p1.x, p1.y);
-	ctx.lineTo(p2.x, p2.y);
-	ctx.stroke();
+	canvas.beginPath();
+	canvas.strokeStyle = col;
+	canvas.moveTo(p1.x, p1.y);
+	canvas.lineTo(p2.x, p2.y);
+	canvas.stroke();
 }

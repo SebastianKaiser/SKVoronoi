@@ -3,7 +3,7 @@ const SIZE_CANVAS_Y = 800;
 
 let ctx = undefined;
 
-let size        = 1 << 6;
+let size        = 1 << 4;
 let at          = undefined;
 let insertnodes = 1;
 let deletenodes = 1;
@@ -57,17 +57,16 @@ function drawAnimation() {
     at = at.insert( values[insertnodes] );
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, SIZE_CANVAS_X, SIZE_CANVAS_Y);
-    drawTree(at, {x: 300, y: 30}, 150 );
-    at.testSanity()
+    drawTree(at, {x: 300, y: 30}, 150, ctx);
+    at.checkSanity()
     insertnodes += 1;
-    assert("lost a node inserting", countNodes( at, 0 ) == insertnodes );
-  } else if (insertnodes == values.length && deletenodes < values.length - 1) {
+  } else if (at && insertnodes == values.length && deletenodes < values.length - 1) {
     $('#info').text(`deleting ${values[deletenodes]}`);
     at = at.delete(values[deletenodes]);
     ctx.fillStyle = "white";
     ctx.fillRect(0, 0, SIZE_CANVAS_X, SIZE_CANVAS_Y);
-    drawTree(at, {x: 300, y: 30}, 150 );
-    at.testSanity()
+    drawTree(at, {x: 300, y: 30}, 150, ctx);
+    if (at) at.checkSanity()
     deletenodes += 1;
   } else {
     createValues();
@@ -96,6 +95,7 @@ function createValues() {
   // values = [27, 720, 258, 276, 543, 81, 864, 347, 722, 889, 383, 65, 382, 551, 461, 758];
   // values = [336, 54, 924, 880, 25, 742, 385, 647, 475, 90, 713, 734, 664, 326, 87, 622];
   // values = [998, 720, 293, 133, 942, 283, 447, 520, 665, 710, 441, 481, 691, 966, 827, 98];
+  // values = [1,2,3,2,1,3,2,1];
   let keys = [];
 	let MAX_VAL = 1000;
   if ( values.length == 0 ) {
@@ -108,7 +108,7 @@ function createValues() {
   	}
   }
   console.log(values);
-  at = new AvlTreeNode(values[0]);
+  at = new AvlTreeNode(values[0], undefined, testSanity);
   insertnodes = 1;
   deletenodes = 0;
 	// console.log(values);
@@ -123,6 +123,33 @@ function countNodes( node, count ) {
   if (!node) return 0;
   if (count > size) throw "Error in structure";
   return countNodes( node.left, count + 1 ) + countNodes( node.right, count + 1 ) + 1;
+}
+
+/*****************************************
+testing && drawing stuff
+*****************************************/
+let testSanity = function() {
+	if( this.left ) {
+		if(this  != this.left.parent) {
+			throw `tantrum: left child parent inconsistent: \
+			this ${this.value}, left parent ${this.left.parent.value}`;
+		}
+		if(this.left  == this.parent) {
+			throw `tantrum: parent and left child identical (wrong!)`;
+		}
+	}
+	if( this.right ) {
+		if(this != this.right.parent) {
+			throw `tantrum: left child parent inconsistent: \
+			this ${this.value}, right parent ${this.right.parent.value}`;
+		}
+		if(this.right  == this.parent) {
+			throw `tantrum: parent and right child identical (wrong!)`;
+		}
+	}
+	if( Math.abs(this.balfac()) > 1 ) {
+		throw `tantrum: unbalanced`
+	}
 }
 
 function assert( description, test ) {
