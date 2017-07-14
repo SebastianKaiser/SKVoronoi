@@ -305,3 +305,23 @@ Beachlinesegment. Das enthält eine Liste mit den Events, die es enthalten.
 Dann kann man das ja einfach alles löschen.
 
 Also wo ist das Problem ?
+
+13.7.2017:
+------
+
+Es geht. Das Problem war z.T., dass ich den Code nicht richtig lese, und dass
+Javascript eben keine Fehler schmeißt, wenn Attribute nicht definiert sind. Also
+insgesamt Unaufmerksamkeit. Aber es geht jetzt. Jetzt teste ich noch ein
+bischen, dann erzeugen wir einen DCEL.
+
+Also nochmal ein Fehler. Circle Events werden wohl vorzeitig gelöscht. Beim
+Erzeugen eines Circle Events wird der neue Event bei allem drei beteiligten BLS
+vermerkt. Wenn sich eines dieser BLSe ändert, wird der Event gelöscht.
+Was heißt ändern: Wenn das BLS gebrochen oder gelöscht wird.
+Die Frage ist: Wann darf ein Circle Event vorzeitig gelöscht werden.
+
+14.7.2017:
+------
+
+Wir hatten ein Balanceproblem beim Einfügen. Das Problem mit dem vorzeitigen
+Löschen besteht weiterhin.

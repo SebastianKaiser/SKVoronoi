@@ -61,7 +61,7 @@ AvlTreeNode.prototype.calcHeight = function() {
 
 AvlTreeNode.prototype.balanceLeft = function() {
 	let retval = undefined;
-	if (this.left.balfac() > 0) {
+	if (this.left.balfac() >= 0) {
 		// left left
 		retval = this.rotateRight()
 	} else if (this.left.balfac() < 0) {
@@ -80,7 +80,7 @@ AvlTreeNode.prototype.balanceRight = function() {
 		// right left
 		this.right = this.right.rotateRight();
 		retval = this.rotateLeft();
-	} else if (this.right.balfac() < 0) {
+	} else if (this.right.balfac() <= 0) {
 		// right right
 		retval = this.rotateLeft()
 	} else {
@@ -121,7 +121,6 @@ AvlTreeNode.prototype.balanceNodeDelete = function() {
 AvlTreeNode.prototype.updateHeight = function() {
 	let tmp = this.height;
 	this.calcHeight();
-	let retval = this;
 	if (this.height != tmp) {
 		if (this.parent) this.parent.updateHeight();
 	}
@@ -152,6 +151,7 @@ AvlTreeNode.prototype.rotateLeft = function() {
 	if (this.right) this.right.parent = this;
 	newTop.left = this;
 	this.updateHeight();
+	newTop.checkSanity();
 	return newTop;
 }
 

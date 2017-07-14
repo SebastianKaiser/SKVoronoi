@@ -393,32 +393,32 @@ let testsites = undefined;
 //testsites = [{x:70, y:556},{x:123, y:364},{x:541, y:432},{x:387, y:419},
 //		{x:225, y:490},{x:343, y:414},{x:464, y:492},{x:522, y:339}]
 // testsites = [{x:403, y:297},{x:425, y:448},{x:48, y:388},{x:280, y:223}, {x:596, y:357},{x:308, y:254},{x:157, y:261},{x:432, y:292}];
+// testsites = [{	x: 375,	y: 300}, {x: 554,	y: 459}, {x: 86, y: 206}, {	x: 285,	y: 149}, {	x: 117,	y: 130}, {	x: 321,	y: 134}, {	x: 236,	y: 268}, {	x: 558,	y: 570}];
 testsites = [{
-	x: 375,
-	y: 300
+	x: 182,
+	y: 453
 }, {
-	x: 554,
-	y: 459
+	x: 140,
+	y: 470
 }, {
-	x: 86,
-	y: 206
+	x: 209,
+	y: 374
 }, {
-	x: 285,
-	y: 149
+	x: 465,
+	y: 540
 }, {
-	x: 117,
-	y: 130
+	x: 515,
+	y: 529
 }, {
-	x: 321,
-	y: 134
+	x: 255,
+	y: 455
 }, {
-	x: 236,
-	y: 268
+	x: 66,
+	y: 277
 }, {
-	x: 558,
-	y: 570
-}]
-
+	x: 544,
+	y: 578
+}];
 
 let SCX_INNER = SIZE_CANVAS_X * 0.9;
 let SCX_OUTER = SIZE_CANVAS_X * 0.1;
@@ -495,8 +495,8 @@ let insertProcess = function(value, rel) {
 	if (this.left) {
 		this.left.parent = nl;
 	}
+	this.left = nl;
 	nl.calcHeight();
-	this.left = nl.balanceInsert();
 
 	// store the left most bls
 	nl.bls = new BeachlineSegment(this.value, nl, this.bls.prev, undefined);
@@ -512,28 +512,29 @@ let insertProcess = function(value, rel) {
 	if (this.right) {
 		this.right.parent = nr;
 	}
+	this.right = nr;
 	nr.calcHeight();
-	this.right = nr.balanceInsert();
 
 	nr.bls = new BeachlineSegment(this.value, nr, undefined, this.bls.next);
 	if (this.bls.next) {
 		this.bls.next.prev = nr.bls;
 	}
 
-	// swap value
-	this.value = value;
-	this.height = this.calcHeight();
-
+	// delete all associated circle events
 	this.bls.event.forEach(ev => {
-		ev.draw("teal");
 		ev.deleted = true;
 		console.log(`deleting => ${ev.toString()}`)
 	});
+	// swap value
+	this.value = value;
+	this.height = this.calcHeight();
+	// create a new beach line segment
 	this.bls = new BeachlineSegment(value, this, nl.bls, nr.bls);
-	this.bls.drawBeachlineSegment("purple");
 
 	nl.bls.next = nr.bls.prev = this.bls;
 
+	this.left = this.left.balanceInsert();
+	this.right = this.right.balanceInsert();
 	this.calcHeight();
 
 	queueNewCircleEvent(this.bls.prev);
@@ -565,9 +566,9 @@ function queueNewCircleEvent(bls) {
 	bls.prev.event.push(nce);
 	bls.event.push(nce);
 	bls.next.event.push(nce);
-
 	console.log(`created circle event ${nce.toString()}`);
 
+	cevts.push(nce);
 	// enqueue
 	pqueue.queue(nce);
 
@@ -598,7 +599,6 @@ function calcVoronoi(bptree) {
 	} else if (e instanceof CircleEvent) {
 		let currBls = e.ref;
 		currBls.event.forEach(ev => {
-			ev.draw("purple");
 			ev.deleted = true;
 			console.log(`deleting => ${ev.toString()}`)
 		});
