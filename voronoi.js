@@ -387,37 +387,30 @@ algorithm
 */
 
 let testsites = undefined;
-// let testsites = [{x:323,y:509},{x:695,y:619},{x:610,y:635}];
-// let testsites = [{x:323,y:309},{x:495,y:419},{x:410,y:435}];
-// let testsites = [{x:60,y:323},{x:393,y:374},{x:259,y:427},{x:429,y:530}];
-//testsites = [{x:70, y:556},{x:123, y:364},{x:541, y:432},{x:387, y:419},
-//		{x:225, y:490},{x:343, y:414},{x:464, y:492},{x:522, y:339}]
-// testsites = [{x:403, y:297},{x:425, y:448},{x:48, y:388},{x:280, y:223}, {x:596, y:357},{x:308, y:254},{x:157, y:261},{x:432, y:292}];
-// testsites = [{	x: 375,	y: 300}, {x: 554,	y: 459}, {x: 86, y: 206}, {	x: 285,	y: 149}, {	x: 117,	y: 130}, {	x: 321,	y: 134}, {	x: 236,	y: 268}, {	x: 558,	y: 570}];
 testsites = [{
-	x: 182,
-	y: 453
+	x: 213,
+	y: 567
 }, {
-	x: 140,
-	y: 470
+	x: 238,
+	y: 370
 }, {
-	x: 209,
-	y: 374
+	x: 560,
+	y: 251
 }, {
-	x: 465,
-	y: 540
+	x: 83,
+	y: 61
 }, {
-	x: 515,
-	y: 529
+	x: 499,
+	y: 556
 }, {
-	x: 255,
-	y: 455
+	x: 509,
+	y: 276
 }, {
-	x: 66,
-	y: 277
+	x: 593,
+	y: 547
 }, {
-	x: 544,
-	y: 578
+	x: 136,
+	y: 386
 }];
 
 let SCX_INNER = SIZE_CANVAS_X * 0.9;
@@ -446,7 +439,9 @@ function initAlgorithm() {
 			});
 			pqueue.queue(sites[i]);
 		}
-		sites.forEach(s => console.log(s.toString()));
+		let bla = [];
+		sites.forEach(s => bla += `${s}`);
+		console.log(bla);
 	}
 }
 
@@ -601,7 +596,7 @@ function calcVoronoi(bptree) {
 		let currBls = e.ref;
 		currBls.event.forEach(ev => {
 			ev.deleted = true;
-			console.log(`deleting => ${ev.toString()}`)
+			// console.log(`deleting => ${ev.toString()}`)
 		});
 		currBls.remove();
 		let newNode = e.ref.refnode.deleteNode();
@@ -609,14 +604,14 @@ function calcVoronoi(bptree) {
 		queueNewCircleEvent(currBls.prev);
 		queueNewCircleEvent(currBls.next);
 	}
-	let curr = blsFirst;
-	let blsstring = ""
-	while (curr) {
-		blsstring += ` ${curr.toString()}`;
-		curr.checkSanity();
-		curr = curr.next;
-	}
-	console.log(`list BLS ${blsstring}`);
+	// let curr = blsFirst;
+	// let blsstring = ""
+	// while (curr) {
+	// 	blsstring += ` ${curr.toString()}`;
+	// 	curr.checkSanity();
+	// 	curr = curr.next;
+	// }
+	// console.log(`list BLS ${blsstring}`);
 	return bptree;
 }
 

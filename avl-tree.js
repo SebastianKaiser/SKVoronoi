@@ -151,7 +151,6 @@ AvlTreeNode.prototype.rotateLeft = function() {
 	if (this.right) this.right.parent = this;
 	newTop.left = this;
 	this.updateHeight();
-	newTop.checkSanity();
 	return newTop;
 }
 
