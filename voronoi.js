@@ -604,7 +604,8 @@ function calcVoronoi(bptree) {
 			console.log(`deleting => ${ev.toString()}`)
 		});
 		currBls.remove();
-		e.ref.refnode.deleteNode();
+		let newNode = e.ref.refnode.deleteNode();
+		if (newNode && !newNode.parent) bptree = newNode;
 		queueNewCircleEvent(currBls.prev);
 		queueNewCircleEvent(currBls.next);
 	}
