@@ -550,7 +550,8 @@ function queueNewCircleEvent(bls) {
 	let sp = bls.sitepoint;
 	let psp = bls.prev.sitepoint;
 	let nsp = bls.next.sitepoint;
-	// must be three different sites
+	console.log(`${psp} ${sp} ${nsp}`)
+		// must be three different sites
 	if (psp.id == nsp.id || psp.id == sp.id || nsp.id == sp.id) {
 		return;
 	}
@@ -563,9 +564,9 @@ function queueNewCircleEvent(bls) {
 	let cv = circumVector(psp, sp, nsp);
 	// create and register with beach line segments
 	let nce = new CircleEvent(cv.p, cv.r, bls);
-	bls.prev.event.push(nce);
+	//bls.prev.event.push(nce);
 	bls.event.push(nce);
-	bls.next.event.push(nce);
+	//bls.next.event.push(nce);
 	console.log(`created circle event ${nce.toString()}`);
 
 	cevts.push(nce);
@@ -653,9 +654,9 @@ function drawVoronoi() {
 		x: SIZE_CANVAS_X,
 		y: sweepy
 	}, "grey");
-	cevts.forEach(ev => {
-		if (!ev.deleted) ev.draw();
-	});
+	// cevts.forEach(ev => {
+	// 	if (!ev.deleted) ev.draw();
+	// });
 }
 
 function drawBeachline() {
