@@ -121,6 +121,9 @@ AvlTreeNode.prototype.balanceNodeDelete = function() {
 AvlTreeNode.prototype.updateHeight = function() {
 	let tmp = this.height;
 	this.calcHeight();
+	if (this.parent && this.parent == this.parent.parent) {
+		throw "loop";
+	}
 	if (this.height != tmp) {
 		if (this.parent) this.parent.updateHeight();
 	}
@@ -186,7 +189,7 @@ AvlTreeNode.prototype.insert = function(newval) {
 	}
 	this.calcHeight();
 	let retval = this.balanceInsert();
-	// retval.checkSanity();
+	retval.checkSanity();
 	return retval;
 }
 
@@ -212,7 +215,6 @@ AvlTreeNode.prototype.deleteNode = function() {
 	let newNode = undefined;
 	// choose the node to replace this with
 	if (!this.left && !this.right) {
-		this.handleParent(undefined);
 		// the node is a leaf, newNode is undefined
 	} else if (!this.right) {
 		newNode = this.left;
@@ -228,9 +230,9 @@ AvlTreeNode.prototype.deleteNode = function() {
 		if (newNode.right) newNode.right.parent = newNode;
 	}
 	// rebalance newNode and point newNode to new parent
+	this.handleParent(newNode);
 	if (newNode) {
 		newNode.parent = this.parent; // can be undefined
-		this.handleParent(newNode);
 		newNode = newNode.balanceNodeDelete();
 	}
 	return newNode;

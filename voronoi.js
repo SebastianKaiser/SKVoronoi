@@ -388,29 +388,29 @@ algorithm
 
 let testsites = undefined;
 testsites = [{
-	x: 213,
-	y: 567
+	x: 530,
+	y: 438
 }, {
-	x: 238,
-	y: 370
+	x: 92,
+	y: 342
 }, {
-	x: 560,
-	y: 251
+	x: 525,
+	y: 440
 }, {
-	x: 83,
-	y: 61
+	x: 441,
+	y: 342
 }, {
-	x: 499,
-	y: 556
+	x: 168,
+	y: 190
 }, {
-	x: 509,
-	y: 276
+	x: 598,
+	y: 444
 }, {
-	x: 593,
-	y: 547
+	x: 188,
+	y: 574
 }, {
-	x: 136,
-	y: 386
+	x: 176,
+	y: 224
 }];
 
 let SCX_INNER = SIZE_CANVAS_X * 0.9;
@@ -637,8 +637,8 @@ function drawVoronoi() {
 		x: 300,
 		y: 50
 	}, 150, ctx2);
-	bpt.checkSanity();
 	drawBeachline();
+	bpt.checkSanity();
 	sites.forEach(c => {
 		drawPoint(c, "red", 4);
 		ctx.fillStyle = "black";
