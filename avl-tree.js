@@ -212,6 +212,7 @@ AvlTreeNode.prototype.deleteNode = function() {
 	let newNode = undefined;
 	// choose the node to replace this with
 	if (!this.left && !this.right) {
+		this.handleParent(undefined);
 		// the node is a leaf, newNode is undefined
 	} else if (!this.right) {
 		newNode = this.left;

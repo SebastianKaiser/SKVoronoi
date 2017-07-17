@@ -455,15 +455,17 @@ let vcomp = function(e) {
 	// findIntersect returns NaN if one of it's arguments is undefined
 	let lt = this.left ?
 		chooseRight(this.left.biggest().value, this.value, sweepy) : Number.MIN_SAFE_INTEGER;
-	if (e.x <= lt) {
-		return -1;
-	} // proceed to the left
 	let tr = this.right ?
 		chooseRight(this.value, this.right.smallest().value, sweepy) : Number.MAX_SAFE_INTEGER;
+	if (e.x >= lt && e.x <= tr) {
+		return 0; // the beachline segment is found
+	}
+	if (e.x < lt) {
+		return -1;
+	} // proceed to the left
 	if (e.x > tr) {
 		return 1;
 	} // proceed to the right
-	return 0; // the beachline segment is found
 }
 
 // given to sites site1 and site2, returns the leftmost intersection point (wrt the x-axis) of the
@@ -604,14 +606,14 @@ function calcVoronoi(bptree) {
 		queueNewCircleEvent(currBls.prev);
 		queueNewCircleEvent(currBls.next);
 	}
-	// let curr = blsFirst;
-	// let blsstring = ""
-	// while (curr) {
-	// 	blsstring += ` ${curr.toString()}`;
-	// 	curr.checkSanity();
-	// 	curr = curr.next;
-	// }
-	// console.log(`list BLS ${blsstring}`);
+	let curr = blsFirst;
+	let blsstring = ""
+	while (curr) {
+		blsstring += ` ${curr.toString()}`;
+		curr.checkSanity();
+		curr = curr.next;
+	}
+	console.log(`list BLS ${blsstring}`);
 	return bptree;
 }
 
@@ -650,9 +652,9 @@ function drawVoronoi() {
 		x: SIZE_CANVAS_X,
 		y: sweepy
 	}, "grey");
-	// cevts.forEach(ev => {
-	// 	if (!ev.deleted) ev.draw();
-	// });
+	cevts.forEach(ev => {
+		if (!ev.deleted) ev.draw();
+	});
 }
 
 function drawBeachline() {
