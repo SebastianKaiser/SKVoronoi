@@ -96,6 +96,9 @@ function init() {
 /******************************************************
 Data structures
 */
+//////////////////////////////////////////////////////////////////
+// Site event
+//////////////////////////////////////////////////////////////////
 let Site = function(point) {
 	this.id = siteIdCounter++;
 	this.x = point.x;
@@ -103,19 +106,28 @@ let Site = function(point) {
 }
 
 Site.prototype.toString = function() {
-	return ` {x:${this.x}, y:${this.y}},`;
+	return `{x:${this.x}, y:${this.y}}`;
 }
 
 Site.prototype.equals = function(other) {
 	return (this.x == other.x) && (this.y == other.y);
 }
 
+Site.prototype.hashCode = function() {
+	return (this.x * 31) + this.y;
+}
+
 Site.prototype.draw = function(color = "red") {
 	drawPoint(this, color, 5);
 }
 
-// Circle event. y contains the y coordinate, where this event is supposed to fire,
-// meaning this.y == point.x + radius.
+//////////////////////////////////////////////////////////////////
+// Circle event. y contains the y coordinate, where this event is
+// supposed to fire, meaning this.y == point.x + radius.
+// point, probable vertex point
+// radius, the radius of the circle
+// ref, the beach line segment to be deleted
+//////////////////////////////////////////////////////////////////
 let CircleEvent = function(point, radius, ref) {
 	this.id = circleIdCounter++;
 	this.deleted = false;
@@ -124,7 +136,6 @@ let CircleEvent = function(point, radius, ref) {
 	this.y = point.y + radius;
 	this.r = radius;
 	this.ref = ref;
-	this.siteSet = new BitSet();
 }
 
 CircleEvent.prototype.toString = function() {
@@ -139,6 +150,9 @@ CircleEvent.prototype.draw = function(color = "blue") {
 	}, "green", 3);
 }
 
+//////////////////////////////////////////////////////////////////
+// Parabolas
+//////////////////////////////////////////////////////////////////
 let ParabolaAhk = function(a, h, k) {
 	this.a = a;
 	this.h = h;
@@ -182,6 +196,9 @@ DegenParabolaAhk.prototype.valuex = function(x) {
 
 DegenParabolaAhk.prototype.draw = function(xl, xr, color) {}
 
+//////////////////////////////////////////////////////////////////
+// Beach line segment
+//////////////////////////////////////////////////////////////////
 let BeachlineSegment = function(sitepoint, refnode, prev, next) {
 	this.id = beachlineSegmentCounter++;
 	this.sitepoint = sitepoint;
@@ -236,21 +253,52 @@ BeachlineSegment.prototype.toString = function() {
 	return `BLS(${this.sitepoint.x}, ${this.sitepoint.y})`;
 }
 
-let DcelVertex = function(halfedge) {
-	this.halfedge = halfedge;
+//////////////////////////////////////////////////////////////////
+// DECL Vertex
+//////////////////////////////////////////////////////////////////
+let v_id = 0;
+let DcelVertex = function(coord, halfEdge) {
+	this.id = v_id++;
+	this.coord = coord;
+	this.halfEdge = halfEdge; // this halfedge has its origin in this
 }
 
-let DcelHalfEdge = function(vertex, face, next, twin) {
-	this.vertex = vertex;
-	this.face = face;
-	this.next = next;
-	this.twin = twin;
+//////////////////////////////////////////////////////////////////
+// DCEL half-edge
+//////////////////////////////////////////////////////////////////
+let he_id = 0;
+let DcelHalfEdge = function(vertex, face, twin, next) {
+	this.id = he_id++;
+	this.vertex = vertex; // this edge has its origin at vertex
+	this.face = face; // this face lies to the left of this
+	this.twin = twin; // this is the twin half-edge
+	this.next = next; // this is the next half edge
 }
 
-let DcelFace = function(edge) {
-	this.edge = edge;
+DcelHalfEdge.prototype.hashCode = function() {
+	return this.face.hashCode() * 31 + this.twin.face.hashCode();
 }
 
+function hashCodeSitePair(site1, site2) {
+	return site1.hashCode() * 31 + site2.hashCode();
+}
+
+//////////////////////////////////////////////////////////////////
+// DCEL Face
+//////////////////////////////////////////////////////////////////
+let f_id = 0;
+let DcelFace = function(site, halfEdge) {
+	this.id = f_id++;
+	this.site = site; // this is the name
+	this.halfEdge = halfEdge; // this is some edge on the outer border
+}
+
+DcelFace.prototype.hashCode = function() {
+	return this.site.hashCode();
+}
+
+//////////////////////////////////////////////////////////////////
+// Sanity check
 let vCheckSanity = function() {
 	if (this.left) {
 		if (this != this.left.parent) {
@@ -267,9 +315,6 @@ let vCheckSanity = function() {
 		if (this.right == this.parent) {
 			throw `tantrum: parent and right child identical (wrong!)`;
 		}
-	}
-	if (Math.abs(this.balfac()) > 1) {
-		throw `tantrum: unbalanced`
 	}
 }
 
@@ -386,32 +431,38 @@ function orientationClockwise(site1, site2, site3) {
 algorithm
 */
 
+let edgeBetweenSites = {};
+
+let halfEdges = new Map();
+let faces = new Map();
+let vertices = new Map();
+
 let testsites = undefined;
-testsites = [{
-	x: 530,
-	y: 438
-}, {
-	x: 92,
-	y: 342
-}, {
-	x: 525,
-	y: 440
-}, {
-	x: 441,
-	y: 342
-}, {
-	x: 168,
-	y: 190
-}, {
-	x: 598,
-	y: 444
-}, {
-	x: 188,
-	y: 574
-}, {
-	x: 176,
-	y: 224
-}];
+// testsites = [{
+// 	x: 326,
+// 	y: 465
+// }, {
+// 	x: 238,
+// 	y: 461
+// }, {
+// 	x: 244,
+// 	y: 530
+// }, {
+// 	x: 586,
+// 	y: 498
+// }, {
+// 	x: 233,
+// 	y: 121
+// }, {
+// 	x: 311,
+// 	y: 528
+// }, {
+// 	x: 439,
+// 	y: 60
+// }, {
+// 	x: 147,
+// 	y: 576
+// }];
 
 let SCX_INNER = SIZE_CANVAS_X * 0.9;
 let SCX_OUTER = SIZE_CANVAS_X * 0.1;
@@ -422,9 +473,11 @@ function initAlgorithm() {
 	bpt = undefined;
 	circleIdCounter = 0;
 	stepcntr = 0; // for debugging
-	circleList = [];
 	pqueue.clear();
 	firstBls = undefined;
+	halfEdges.clear();
+	faces.clear();
+	vertices.clear();
 
 	if (testsites) {
 		for (let i = 0; i < testsites.length; i++) {
@@ -485,6 +538,7 @@ function chooseRight(site1, site2) {
 // callback for avltreenode, called by insert method
 // this breaks up this into three nodes, left and right contain the same value
 // as this, this becomes the new root with the new value
+// Also, a halfedge must be created
 let insertProcess = function(value, rel) {
 	// left subtree
 	let nl = new AvlTreeNode(this.value, this, vCheckSanity, vcomp, insertProcess);
@@ -520,57 +574,66 @@ let insertProcess = function(value, rel) {
 	// delete all associated circle events
 	this.bls.event.forEach(ev => {
 		ev.deleted = true;
-		console.log(`deleting => ${ev.toString()}`)
+		console.log(`deleting => ${ev.toString()}`);
 	});
+
+	createNewDcelEntries(value, this.value);
 	// swap value
 	this.value = value;
 	this.height = this.calcHeight();
-	// create a new beach line segment
+	// create a new beach line segment for this
 	this.bls = new BeachlineSegment(value, this, nl.bls, nr.bls);
-
+	// set up the pointers
 	nl.bls.next = nr.bls.prev = this.bls;
-
+	// balance the tree
 	this.left = this.left.balanceInsert();
 	this.right = this.right.balanceInsert();
 	this.calcHeight();
-
+	// queue two new events
 	queueNewCircleEvent(this.bls.prev);
 	queueNewCircleEvent(this.bls.next);
+}
+
+function createNewDcelEntries(newSite, oldSite) {
+	// a new face (b/c new site)
+	let newFace = new DcelFace(newSite, undefined);
+	faces.set(newSite.hashCode(), newFace);
+	pFace = faces.get(oldSite.hashCode());
+
+	// two new half edges between the new face and this
+	let ntedge = new DcelHalfEdge(undefined, newFace, undefined, undefined);
+	newFace.halfEdge = ntedge;
+	let tnedge = new DcelHalfEdge(undefined, pFace, ntedge, undefined);
+	ntedge.twin = tnedge;
+	if (!pFace.halfEdge) pFace.halfEdge = tnedge;
+	// enter edges into map
+	halfEdges.set(ntedge.hashCode(), ntedge);
+	halfEdges.set(tnedge.hashCode(), tnedge);
 }
 
 // create and enqueue
 function queueNewCircleEvent(bls) {
 	// collect all the sites
-	if (!bls || !bls.prev || !bls.next) {
-		return;
-	}
+	if (!bls || !bls.prev || !bls.next) return;
 	let sp = bls.sitepoint;
 	let psp = bls.prev.sitepoint;
 	let nsp = bls.next.sitepoint;
-	console.log(`${psp} ${sp} ${nsp}`)
-		// must be three different sites
-	if (psp.id == nsp.id || psp.id == sp.id || nsp.id == sp.id) {
-		return;
-	}
-
-	if (!orientationClockwise(psp, sp, nsp)) {
-		return;
-	} // false alarn
-
-	// calc the point where this fires
+	// must be three different sites
+	if (psp.id == nsp.id || psp.id == sp.id || nsp.id == sp.id) return;
+	if (!orientationClockwise(psp, sp, nsp)) return; // false alarm
+	// calculate the point where this fires
 	let cv = circumVector(psp, sp, nsp);
 	// create and register with beach line segments
-	let nce = new CircleEvent(cv.p, cv.r, bls);
-	//bls.prev.event.push(nce);
-	bls.event.push(nce);
-	//bls.next.event.push(nce);
-	console.log(`created circle event ${nce.toString()}`);
+	let newce = new CircleEvent(cv.p, cv.r, bls);
+	bls.event.push(newce);
+	console.log(
+		`created circle event ${newce.toString()} from ${psp} ${sp} ${nsp}`);
 
-	cevts.push(nce);
-	// enqueue
-	pqueue.queue(nce);
-
-	return nce;
+	// debug
+	cevts.push(newce);
+	// enqueue into event queue
+	pqueue.queue(newce);
+	return newce;
 }
 
 let graph = undefined;
@@ -578,6 +641,9 @@ let stepcntr = 0; // for debugging
 let lastEvent = undefined;
 let cevts = [];
 
+//////////////////////////////////////////////////////////////////
+// Main Algorithm
+//////////////////////////////////////////////////////////////////
 function calcVoronoi(bptree) {
 	let e = pqueue.dequeue();
 	stepcntr += 1;
@@ -591,6 +657,7 @@ function calcVoronoi(bptree) {
 			bptree = new AvlTreeNode(e, undefined, vCheckSanity,
 				vcomp, insertProcess);
 			blsFirst = bptree.bls = new BeachlineSegment(e, bptree, undefined, undefined);
+			faces.set(e.hashCode(), new DcelFace(e, undefined));
 		} else {
 			bptree = bptree.insert(e);
 		}
@@ -598,28 +665,54 @@ function calcVoronoi(bptree) {
 		let currBls = e.ref;
 		currBls.event.forEach(ev => {
 			ev.deleted = true;
-			// console.log(`deleting => ${ev.toString()}`)
 		});
 		currBls.remove();
-		let newNode = e.ref.refnode.deleteNode();
+		let toDelete = currBls.refnode;
+		let newNode = toDelete.deleteNode();
+		if (toDelete.parent) toDelete.parent.balanceNodeDelete();
 		if (newNode && !newNode.parent) bptree = newNode;
+
+		// create a DCEL Vertex and stuff
+		let vertexSite = new Site(e.p);
+		createDcelVertex(vertexSite, currBls);
+		// enqueue new circle events
 		queueNewCircleEvent(currBls.prev);
 		queueNewCircleEvent(currBls.next);
 	}
-	let curr = blsFirst;
-	let blsstring = ""
-	while (curr) {
-		blsstring += ` ${curr.toString()}`;
-		curr.checkSanity();
-		curr = curr.next;
-	}
-	console.log(`list BLS ${blsstring}`);
 	return bptree;
 }
 
-/*****************************************
-drawing stuff
-*****************************************/
+// create a DCEL Vertex and new halfedges, and connect these elements
+function createDcelVertex(vertexSite, currBls) {
+	let vert = new DcelVertex(vertexSite, undefined);
+	vertices.set(vertexSite.hashCode(), vert);
+	// get the sites
+	let pfaceSite = currBls.prev.refnode.value;
+	let pface = faces.get(pfaceSite.hashCode());
+	let cfaceSite = currBls.refnode.value;
+	let cface = faces.get(cfaceSite.hashCode());
+	let nfaceSite = currBls.next.refnode.value;
+	let nface = faces.get(nfaceSite.hashCode());
+	// get the halfedges between
+	let pcedge = halfEdges.get(hashCodeSitePair(pfaceSite, cfaceSite));
+	let cnedge = halfEdges.get(hashCodeSitePair(cfaceSite, nfaceSite));
+	// create new halfedges between n and p, since c has disappeared
+	let npedge = new DcelHalfEdge(vert, nface, undefined, undefined);
+	let pnedge = new DcelHalfEdge(undefined, pface, npedge, undefined);
+	npedge.twin = pnedge;
+	// enter edges into map
+	halfEdges.set(npedge.hashCode(), npedge);
+	halfEdges.set(pnedge.hashCode(), pnedge);
+	// connect the edges
+	pcedge.twin.next = cnedge;
+	pnedge.next = pcedge;
+	pcedge.vertex = cnedge.vertex = npedge.vertex = vert;
+	vert.halfEdge = npedge;
+}
+
+//////////////////////////////////////////////////////////////////
+// drawing stuff
+//////////////////////////////////////////////////////////////////
 function drawAnimation() {
 	if (pqueue.length == 0) {
 		initAlgorithm();
@@ -652,9 +745,23 @@ function drawVoronoi() {
 		x: SIZE_CANVAS_X,
 		y: sweepy
 	}, "grey");
-	cevts.forEach(ev => {
-		if (!ev.deleted) ev.draw();
-	});
+	for (var v of vertices.values()) {
+		drawPoint(v.coord, "yellow", 8);
+		let nextV = v.halfEdge.twin.vertex;
+		if (nextV) {
+			drawLineOnCanvas(v.coord, nextV.coord);
+		}
+		let currEdge = v.halfEdge;
+		currNode = v;
+		while (currEdge) {
+			if (currEdge.next) {
+				let v1 = currEdge.vertex;
+				let v2 = currEdge.next.vertex;
+				drawLineOnCanvas(v1.coord, v2.coord);
+			};
+			currEdge = currEdge.next;
+		}
+	};
 }
 
 function drawBeachline() {
@@ -687,7 +794,7 @@ function drawParabola(site, sweepy, xl, xr, color = "red") {
 	}, "DarkMagenta", 2);
 }
 
-function drawLineOnCanvas(p1, p2, col, canvas = ctx) {
+function drawLineOnCanvas(p1, p2, col = "black", canvas = ctx) {
 	canvas.save();
 	canvas.beginPath();
 	canvas.strokeStyle = col;

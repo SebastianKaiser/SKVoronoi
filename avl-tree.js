@@ -101,6 +101,7 @@ AvlTreeNode.prototype.balanceInsert = function() {
 	return retval;
 }
 
+// balances the given node after delete
 AvlTreeNode.prototype.balanceNodeDelete = function() {
 	let retval = this;
 	this.calcHeight();
@@ -212,10 +213,11 @@ AvlTreeNode.prototype.delete = function(value) {
 // remove node
 AvlTreeNode.prototype.deleteNode = function() {
 	// found the desired node => delete it
-	let newNode = undefined;
+	let newNode;
 	// choose the node to replace this with
 	if (!this.left && !this.right) {
 		// the node is a leaf, newNode is undefined
+		newNode = undefined;
 	} else if (!this.right) {
 		newNode = this.left;
 	} else if (!this.left) {
