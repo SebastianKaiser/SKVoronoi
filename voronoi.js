@@ -5,7 +5,7 @@ const SIZE_CANVAS_X = 600;
 const SIZE_CANVAS_Y = 600;
 const HALFX = SIZE_CANVAS_X / 2;
 const HALFY = SIZE_CANVAS_Y / 2;
-const NO_SITES = 1 << 3;
+const NO_SITES = 1 << 5;
 
 /**
 	Initializsation of stuff
@@ -42,18 +42,6 @@ let siteIdCounter = 0;
 let circleIdCounter = 0;
 let beachlineSegmentCounter = 0;
 
-document.getElementById("back").onclick = function() {
-	a -= 0.05;
-	if (a <= 0) {
-		a = 2 * Math.PI;
-	}
-	tdir2 -= 1;
-	if (tdir2 <= Math.max(p21.y, p22.y)) {
-		tdir2 = SIZE_CANVAS_Y;
-	}
-	drawAnimation();
-}
-
 document.getElementById("next").onclick = function() {
 	a += 0.05;
 	if (a >= 2 * Math.PI) {
@@ -69,7 +57,7 @@ document.getElementById("next").onclick = function() {
 window.onload = function() {
 	init()
 	y = 0;
-	// window.setInterval( drawAnimation, 200 );
+	window.setInterval(drawAnimation, 50);
 };
 
 function init() {
@@ -93,9 +81,10 @@ function init() {
 	return true;
 }
 
-/******************************************************
-Data structures
-*/
+//////////////////////////////////////////////////////////////////
+// Data structures
+//////////////////////////////////////////////////////////////////
+
 //////////////////////////////////////////////////////////////////
 // Site event
 //////////////////////////////////////////////////////////////////
@@ -122,7 +111,8 @@ Site.prototype.draw = function(color = "red") {
 }
 
 //////////////////////////////////////////////////////////////////
-// Circle event. y contains the y coordinate, where this event is
+// Circle event.
+// y contains the y coordinate, where this event is
 // supposed to fire, meaning this.y == point.x + radius.
 // point, probable vertex point
 // radius, the radius of the circle
@@ -254,7 +244,7 @@ BeachlineSegment.prototype.toString = function() {
 }
 
 //////////////////////////////////////////////////////////////////
-// DECL Vertex
+// DCEL Vertex
 //////////////////////////////////////////////////////////////////
 let v_id = 0;
 let DcelVertex = function(coord, halfEdge) {
@@ -318,11 +308,11 @@ let vCheckSanity = function() {
 	}
 }
 
-/******************************************************
-math stuff
-*/
+//////////////////////////////////////////////////////////////////
+// math stuff
+//////////////////////////////////////////////////////////////////
+
 // calculates intersection points of two parabolas
-// return { l: ipoint1, r: ipoint2 }
 function intersect(p, op) {
 	if (p instanceof DegenParabolaAhk) {
 		return {
@@ -415,7 +405,6 @@ function findIntersect(site1, site2, tdir) {
 	let p1 = getParabolaFromFokusAndDir(site1, tdir);
 	let p2 = getParabolaFromFokusAndDir(site2, tdir);
 	let i = (site1.y > site2.y) ? intersect(p1, p2, tdir) : intersect(p2, p1, tdir)
-		// console.log(`findIntersect(${site1}, ${site2}, ${tdir}) = {${i.l}, ${i.r}}`);
 	return i;
 }
 
@@ -498,12 +487,10 @@ function initAlgorithm() {
 	}
 }
 
-/*
-comparator function:
--1 means e is smaller than this.value
-1 means e is bigger than this.value
-0 e is (kind of) equal to this.value
-*/
+// comparator function:
+// -1 means e is smaller than this.value
+// 1 means e is bigger than this.value
+// 0 e is (kind of) equal to this.value
 let vcomp = function(e) {
 	// findIntersect returns NaN if one of it's arguments is undefined
 	let lt = this.left ?
@@ -594,6 +581,7 @@ let insertProcess = function(value, rel) {
 	queueNewCircleEvent(this.bls.next);
 }
 
+// create new halfedges between a new and an old site
 function createNewDcelEntries(newSite, oldSite) {
 	// a new face (b/c new site)
 	let newFace = new DcelFace(newSite, undefined);
@@ -693,10 +681,13 @@ function createDcelVertex(vertexSite, currBls) {
 	let cface = faces.get(cfaceSite.hashCode());
 	let nfaceSite = currBls.next.refnode.value;
 	let nface = faces.get(nfaceSite.hashCode());
-	// get the halfedges between
+	// get the halfedges between p and c as as well as between c and n
+	// pcedge is the edge with p to the left
 	let pcedge = halfEdges.get(hashCodeSitePair(pfaceSite, cfaceSite));
+	let cpedge = pcedge.twin;
 	let cnedge = halfEdges.get(hashCodeSitePair(cfaceSite, nfaceSite));
-	// create new halfedges between n and p, since c has disappeared
+	let ncedge = cnedge.twin;
+	// create new halfedges between n and p, since the c bls has disappeared
 	let npedge = new DcelHalfEdge(vert, nface, undefined, undefined);
 	let pnedge = new DcelHalfEdge(undefined, pface, npedge, undefined);
 	npedge.twin = pnedge;
@@ -704,8 +695,10 @@ function createDcelVertex(vertexSite, currBls) {
 	halfEdges.set(npedge.hashCode(), npedge);
 	halfEdges.set(pnedge.hashCode(), pnedge);
 	// connect the edges
-	pcedge.twin.next = cnedge;
+	cpedge.next = cnedge;
+	ncedge.next = npedge;
 	pnedge.next = pcedge;
+
 	pcedge.vertex = cnedge.vertex = npedge.vertex = vert;
 	vert.halfEdge = npedge;
 }
@@ -751,8 +744,8 @@ function drawVoronoi() {
 		if (nextV) {
 			drawLineOnCanvas(v.coord, nextV.coord);
 		}
-		let currEdge = v.halfEdge;
-		currNode = v;
+
+		let currEdge = endMark = v.halfEdge;
 		while (currEdge) {
 			if (currEdge.next) {
 				let v1 = currEdge.vertex;
@@ -760,6 +753,7 @@ function drawVoronoi() {
 				drawLineOnCanvas(v1.coord, v2.coord);
 			};
 			currEdge = currEdge.next;
+			if (currEdge && currEdge.next && endMark.id == currEdge.next.id) break;
 		}
 	};
 }
