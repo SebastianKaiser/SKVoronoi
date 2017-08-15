@@ -57,7 +57,7 @@ document.getElementById("next").onclick = function() {
 window.onload = function() {
 	init()
 	y = 0;
-	window.setInterval(drawAnimation, 50);
+	window.setInterval(drawAnimation, 1);
 };
 
 function init() {
@@ -172,8 +172,8 @@ ParabolaAhk.prototype.draw = function(xl, xr, color) {
 		x: xr,
 		y: this.valuex(xr)
 	}, "DarkMagenta", 8);
-}
 
+}
 let DegenParabolaAhk = function(a, h, k) {
 	this.a = a;
 	this.h = h;
@@ -561,7 +561,6 @@ let insertProcess = function(value, rel) {
 	// delete all associated circle events
 	this.bls.event.forEach(ev => {
 		ev.deleted = true;
-		console.log(`deleting => ${ev.toString()}`);
 	});
 
 	createNewDcelEntries(value, this.value);
@@ -614,9 +613,6 @@ function queueNewCircleEvent(bls) {
 	// create and register with beach line segments
 	let newce = new CircleEvent(cv.p, cv.r, bls);
 	bls.event.push(newce);
-	console.log(
-		`created circle event ${newce.toString()} from ${psp} ${sp} ${nsp}`);
-
 	// debug
 	cevts.push(newce);
 	// enqueue into event queue
@@ -657,7 +653,8 @@ function calcVoronoi(bptree) {
 		currBls.remove();
 		let toDelete = currBls.refnode;
 		let newNode = toDelete.deleteNode();
-		if (toDelete.parent) toDelete.parent.balanceNodeDelete();
+		// the parent might be out of balance
+		if (toDelete.parent) newNode = toDelete.parent.balanceNodeDelete();
 		if (newNode && !newNode.parent) bptree = newNode;
 
 		// create a DCEL Vertex and stuff
@@ -981,3 +978,54 @@ function nearSiteToPoint(point) {
 	});
 	return nearSite;
 }
+
+// testsites = [
+// 	{
+// 		x: 391,
+// 		y: 299
+// 	}, {
+// 		x: 461,
+// 		y: 259
+// 	}, {
+// 		x: 147,
+// 		y: 129
+// 	}, {
+// 		x: 439,
+// 		y: 451
+// 	}, {
+// 		x: 216,
+// 		y: 156
+// 	}, {
+// 		x: 488,
+// 		y: 114
+// 	}, {
+// 		x: 155,
+// 		y: 335
+// 	}, {
+// 		x: 528,
+// 		y: 209
+// 	}, {
+// 		x: 301,
+// 		y: 70
+// 	}, {
+// 		x: 151,
+// 		y: 316
+// 	}, {
+// 		x: 91,
+// 		y: 161
+// 	}, {
+// 		x: 308,
+// 		y: 528
+// 	}, {
+// 		x: 79,
+// 		y: 282
+// 	}, {
+// 		x: 427,
+// 		y: 109
+// 	}, {
+// 		x: 340,
+// 		y: 102
+// 	}, {
+// 		x: 65,
+// 		y: 226
+// 	}];
