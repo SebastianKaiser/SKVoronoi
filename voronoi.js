@@ -219,6 +219,9 @@ let vCheckSanity = function() {
 
 // calculates intersection points of two parabolas
 function intersect(p, op) {
+	if (p instanceof DegenParabolaAhk && op instanceof DegenParabolaAhk) {
+		return undefined;
+	}
 	if (p instanceof DegenParabolaAhk) {
 		return {
 			l: p.h,
@@ -237,18 +240,37 @@ function intersect(p, op) {
 	return rootsOfQuadratic(ra, rb, rc);
 }
 
+// finds the intersections of two parabolas
+// in: sites site1 and site2
+// return: { l: ipoint1, r: ipoint2 }
+function findIntersect(site1, site2, tdir) {
+	let p1 = getParabolaFromFokusAndDir(site1, tdir);
+	let p2 = getParabolaFromFokusAndDir(site2, tdir);
+	return (site1.y > site2.y) ? intersect(p1, p2, tdir) : intersect(p2, p1, tdir)
+}
+
+// given to sites site1 and site2, returns the rightmost intersection point (wrt the x-axis) of the
+// two parabolas defined by the sites as focus and global tdir as directrix
+function chooseRight(site1, site2) {
+	let fi = findIntersect(site1, site2, sweepy);
+	return (site1.y > site2.y) ? fi.r : fi.l;
+}
+
 // calc roots of a quadratic
 function rootsOfQuadratic(a, b, c) {
 	if (a == 0) {
 		return {
+			d: b * b,
 			l: -c / b,
 			r: -c / b
 		};
 	}
-	let d = Math.sqrt(b * b - 4 * a * c);
+	let discriminant = b * b - 4 * a * c
+	let d = Math.sqrt(discriminant);
 	let x1 = (-b + d) / (2 * a);
 	let x2 = (-b - d) / (2 * a);
 	return {
+		d: discriminant,
 		l: x1,
 		r: x2
 	};
@@ -303,16 +325,7 @@ function getParabolaFromFokusAndDir(focus, diry) {
 	return new ParabolaAhk(a, h, k);
 }
 
-// finds the intersections of two parabolas
-// in: sites site1 and site2
-// return: { l: ipoint1, r: ipoint2 }
-function findIntersect(site1, site2, tdir) {
-	let p1 = getParabolaFromFokusAndDir(site1, tdir);
-	let p2 = getParabolaFromFokusAndDir(site2, tdir);
-	let i = (site1.y > site2.y) ? intersect(p1, p2, tdir) : intersect(p2, p1, tdir)
-	return i;
-}
-
+// are these 3 sites in clockwise orientation
 function orientationClockwise(site1, site2, site3) {
 	let area = 0;
 	area += site1.x * site2.y - site1.y * site2.x
@@ -321,9 +334,9 @@ function orientationClockwise(site1, site2, site3) {
 	return area > 0;
 }
 
-/******************************************************
-algorithm
-*/
+//////////////////////////////////////////////////////////////////
+// algorithm
+//////////////////////////////////////////////////////////////////
 let halfEdges = new Map();
 let faces = new Map();
 let vertices = new Map();
@@ -349,6 +362,10 @@ function initVoronoi(sitesIn) {
 // 1 means e is bigger than this.value
 // 0 e is (kind of) equal to this.value
 let vcomp = function(e) {
+	// if (e.y == this.value.y && this.parent == undefined && !this.left & !this.right) {
+	// 	sweepy += 1;
+	// 	e.y += 1;
+	// }
 	// findIntersect returns NaN if one of it's arguments is undefined
 	let lt = this.left ?
 		chooseRight(this.left.biggest().value, this.value, sweepy) : Number.MIN_SAFE_INTEGER;
@@ -363,20 +380,6 @@ let vcomp = function(e) {
 	if (e.x > tr) {
 		return 1;
 	} // proceed to the right
-}
-
-// given to sites site1 and site2, returns the leftmost intersection point (wrt the x-axis) of the
-// two parabolas defined by the sites as focus and global tdir as directrix
-function chooseLeft(site1, site2) {
-	let fi = findIntersect(site1, site2, sweepy);
-	return (site1.y > site2.y) ? fi.l : fi.r;
-}
-
-// given to sites site1 and site2, returns the rightmost intersection point (wrt the x-axis) of the
-// two parabolas defined by the sites as focus and global tdir as directrix
-function chooseRight(site1, site2) {
-	let fi = findIntersect(site1, site2, sweepy);
-	return (site1.y > site2.y) ? fi.r : fi.l;
 }
 
 // callback for avltreenode, called by insert method
@@ -555,4 +558,8 @@ function createDcelVertex(vertexSite, currBls) {
 
 	pcedge.vertex = cnedge.vertex = npedge.vertex = vert;
 	vert.halfEdge = npedge;
+}
+
+if (typeof exports !== 'undefined') {
+	exports.intersect = intesect;
 }

@@ -131,6 +131,7 @@ BeachlineSegment.prototype.drawBeachlineSegment = function(color = "blue") {
     bp = Math.min(chooseRight(this.sitepoint, next.sitepoint), SIZE_CANVAS_X -
       1);
   }
+  console.log(`BL ${stp} to ${bp}`);
   drawParabola(this.sitepoint, sweepy, stp, bp, color);
 }
 
